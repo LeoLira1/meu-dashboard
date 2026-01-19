@@ -240,22 +240,45 @@ with c2:
 st.markdown('<div class="section-header">📈 Mercado Financeiro</div>', unsafe_allow_html=True)
 stocks = {
     "PRIO3": "PRIO3.SA",
-    "PETR4": "BBAS3.SA",
-    "VALE3": "VAMO3.SA",
-    "ITUB4": "MOVI3.SA"
+    "BBAS3": "BBAS3.SA",
+    "MOVI3": "MOVI3.SA",
+    "VAMO3": "VAMO3.SA",
+    "AGRO3": "AGRO3.SA",
+    "DÓLAR": "USDBRL=X"
 }
 
-cols_s = st.columns(4)
-for i, (name, ticker) in enumerate(stocks.items()):
+cols_s = st.columns(3)
+stocks_list = list(stocks.items())
+
+# Primeira linha (3 ações)
+for i in range(3):
+    name, ticker = stocks_list[i]
     price, var = get_stock_data(ticker)
     symbol = "▲" if var >= 0 else "▼"
-    # Badge cor neutra para garantir leitura
     
     with cols_s[i]:
+        # Formatação especial para dólar
+        prefix = "R$" if name != "DÓLAR" else "R$"
         st.markdown(f"""
         <div class="card bg-gradient-dark">
             <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
-            <div class="card-value">R$ {price:.2f}</div>
+            <div class="card-value">{prefix} {price:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Segunda linha (3 ações)
+cols_s2 = st.columns(3)
+for i in range(3, 6):
+    name, ticker = stocks_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    
+    with cols_s2[i-3]:
+        prefix = "R$"
+        st.markdown(f"""
+        <div class="card bg-gradient-dark">
+            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">{prefix} {price:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
 
