@@ -240,9 +240,9 @@ with c2:
 st.markdown('<div class="section-header">📈 Mercado Financeiro</div>', unsafe_allow_html=True)
 stocks = {
     "PRIO3": "PRIO3.SA",
-    "PETR4": "PETR4.SA",
-    "VALE3": "VALE3.SA",
-    "ITUB4": "ITUB4.SA"
+    "PETR4": "BBAS3.SA",
+    "VALE3": "VAMO3.SA",
+    "ITUB4": "MOVI3.SA"
 }
 
 cols_s = st.columns(4)
