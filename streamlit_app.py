@@ -46,11 +46,16 @@ st.markdown("""
     
     /* Variação de Ações (Badge flutuante para contraste) */
     .stock-badge {
-        background: rgba(255,255,255,0.2);
         padding: 2px 8px;
         border-radius: 10px;
         font-size: 0.8rem;
         margin-left: 10px;
+    }
+    .stock-badge-positive {
+        background: rgba(17, 153, 142, 0.8);
+    }
+    .stock-badge-negative {
+        background: rgba(255, 81, 47, 0.8);
     }
     
     /* Notícias */
@@ -424,12 +429,13 @@ for i in range(3):
     name, ticker = stocks_list[i]
     price, var = get_stock_data(ticker)
     symbol = "▲" if var >= 0 else "▼"
+    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
     
     with cols_s[i]:
         prefix = "R$"
         st.markdown(f"""
         <div class="card bg-gradient-dark">
-            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
+            <div class="card-title">{name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
             <div class="card-value">{prefix} {price:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -439,12 +445,13 @@ for i in range(3, 6):
     name, ticker = stocks_list[i]
     price, var = get_stock_data(ticker)
     symbol = "▲" if var >= 0 else "▼"
+    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
     
     with cols_s2[i-3]:
         prefix = "R$"
         st.markdown(f"""
         <div class="card bg-gradient-dark">
-            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
+            <div class="card-title">{name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
             <div class="card-value">{prefix} {price:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
