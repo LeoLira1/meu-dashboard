@@ -439,7 +439,7 @@ cor_lucro = "bg-gradient-green" if lucro_total >= 0 else "bg-gradient-red"
 symbol_var = "▲" if var_total_brl >= 0 else "▼"
 symbol_lucro = "▲" if lucro_total >= 0 else "▼"
 
-col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+col_c1, col_c2, col_c3 = st.columns(3)
 
 with col_c1:
     st.markdown(f"""
@@ -460,15 +460,6 @@ with col_c2:
     """, unsafe_allow_html=True)
 
 with col_c3:
-    st.markdown(f"""
-    <div class="card bg-gradient-teal">
-        <div class="card-title">🏦 Patrimônio Total</div>
-        <div class="card-value">R$ {patrim_total:,.2f}</div>
-        <div class="card-subtitle">BR: R$ {patrim_br:,.2f} | US: R$ {patrim_us_brl:,.2f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col_c4:
     st.markdown(f"""
     <div class="card bg-gradient-gold">
         <div class="card-title">💵 Dólar</div>
