@@ -324,57 +324,62 @@ for i, (col, indicacao) in enumerate(zip([col_f1, col_f2, col_f3], indicacoes_di
 # 2. IA & TECH
 st.markdown('<div class="section-header">🤖 IA & Tech</div>', unsafe_allow_html=True)
 
-# Novidades e lançamentos de IA
-NOVIDADES_IA = [
-    # OpenAI
-    {"empresa": "OpenAI", "titulo": "GPT-4o", "desc": "Modelo multimodal com voz, visão e texto em tempo real", "tipo": "Modelo", "cor": "bg-gradient-green"},
-    {"empresa": "OpenAI", "titulo": "Sora", "desc": "Gerador de vídeos por IA - texto para vídeo realista", "tipo": "Lançamento", "cor": "bg-gradient-green"},
-    {"empresa": "OpenAI", "titulo": "GPT-5", "desc": "Próxima geração em desenvolvimento - rumores de AGI", "tipo": "Em breve", "cor": "bg-gradient-green"},
-    {"empresa": "OpenAI", "titulo": "ChatGPT Pro", "desc": "Plano $200/mês com acesso ilimitado ao o1 pro", "tipo": "Produto", "cor": "bg-gradient-green"},
-    
-    # Anthropic / Claude
-    {"empresa": "Claude", "titulo": "Claude 3.5 Sonnet", "desc": "Melhor modelo atual - coding e análise superiores", "tipo": "Modelo", "cor": "bg-gradient-orange"},
-    {"empresa": "Claude", "titulo": "Claude 3 Opus", "desc": "Modelo mais inteligente para tarefas complexas", "tipo": "Modelo", "cor": "bg-gradient-orange"},
-    {"empresa": "Claude", "titulo": "Computer Use", "desc": "Claude pode controlar seu computador autonomamente", "tipo": "Feature", "cor": "bg-gradient-orange"},
-    {"empresa": "Claude", "titulo": "Artifacts", "desc": "Criação de código, docs e visualizações interativas", "tipo": "Feature", "cor": "bg-gradient-orange"},
-    
-    # Google / Gemini
-    {"empresa": "Gemini", "titulo": "Gemini 2.0 Flash", "desc": "Modelo rápido com capacidades agênticas nativas", "tipo": "Modelo", "cor": "bg-gradient-blue"},
-    {"empresa": "Gemini", "titulo": "Gemini Ultra", "desc": "Modelo mais poderoso do Google - multimodal", "tipo": "Modelo", "cor": "bg-gradient-blue"},
-    {"empresa": "Gemini", "titulo": "Project Astra", "desc": "Assistente universal com visão em tempo real", "tipo": "Em breve", "cor": "bg-gradient-blue"},
-    {"empresa": "Gemini", "titulo": "NotebookLM", "desc": "Estudo e pesquisa com IA - gera podcasts", "tipo": "Produto", "cor": "bg-gradient-blue"},
-    
-    # DeepSeek
-    {"empresa": "DeepSeek", "titulo": "DeepSeek V3", "desc": "Modelo chinês open-source rivaliza com GPT-4", "tipo": "Modelo", "cor": "bg-gradient-purple"},
-    {"empresa": "DeepSeek", "titulo": "DeepSeek R1", "desc": "Reasoning model - compete com o1 da OpenAI", "tipo": "Modelo", "cor": "bg-gradient-purple"},
-    {"empresa": "DeepSeek", "titulo": "DeepSeek Coder", "desc": "Especializado em programação - grátis e open", "tipo": "Modelo", "cor": "bg-gradient-purple"},
-    
-    # Outras empresas
-    {"empresa": "Meta", "titulo": "Llama 3.1 405B", "desc": "Maior modelo open-source disponível", "tipo": "Modelo", "cor": "bg-gradient-dark"},
-    {"empresa": "xAI", "titulo": "Grok 2", "desc": "IA do Elon Musk com acesso ao X/Twitter", "tipo": "Modelo", "cor": "bg-gradient-dark"},
-    {"empresa": "Mistral", "titulo": "Mixtral 8x22B", "desc": "MoE europeu - eficiente e poderoso", "tipo": "Modelo", "cor": "bg-gradient-dark"},
-    {"empresa": "Perplexity", "titulo": "Perplexity Pro", "desc": "Busca com IA - alternativa ao Google", "tipo": "Produto", "cor": "bg-gradient-teal"},
-    {"empresa": "Midjourney", "titulo": "V6.1", "desc": "Geração de imagens com qualidade fotográfica", "tipo": "Modelo", "cor": "bg-gradient-teal"},
-]
+@st.cache_data(ttl=1800)
+def get_ai_news(empresa, query):
+    """Busca notícias de empresas de IA"""
+    try:
+        query_encoded = quote(query)
+        url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        feed = feedparser.parse(response.content)
+        if feed.entries:
+            return feed.entries[0]  # Retorna a notícia mais recente
+        return None
+    except:
+        return None
 
-# Selecionar 4 novidades aleatórias
-novidades_dia = random.sample(NOVIDADES_IA, 4)
+# Empresas de IA para buscar notícias
+EMPRESAS_IA = [
+    {"nome": "OpenAI", "query": "OpenAI ChatGPT GPT", "emoji": "🟢", "cor": "bg-gradient-green"},
+    {"nome": "Claude", "query": "Anthropic Claude AI", "emoji": "🟠", "cor": "bg-gradient-orange"},
+    {"nome": "Gemini", "query": "Google Gemini AI", "emoji": "🔵", "cor": "bg-gradient-blue"},
+    {"nome": "DeepSeek", "query": "DeepSeek AI", "emoji": "🟣", "cor": "bg-gradient-purple"},
+]
 
 col_ia1, col_ia2, col_ia3, col_ia4 = st.columns(4)
 
-for col, novidade in zip([col_ia1, col_ia2, col_ia3, col_ia4], novidades_dia):
-    # Emoji por empresa
-    emoji_map = {"OpenAI": "🟢", "Claude": "🟠", "Gemini": "🔵", "DeepSeek": "🟣", "Meta": "⚪", "xAI": "⚫", "Mistral": "🔴", "Perplexity": "🌐", "Midjourney": "🎨"}
-    emoji = emoji_map.get(novidade["empresa"], "🤖")
+for col, empresa in zip([col_ia1, col_ia2, col_ia3, col_ia4], EMPRESAS_IA):
+    noticia = get_ai_news(empresa["nome"], empresa["query"])
     
     with col:
-        st.markdown(f"""
-        <div class="card {novidade['cor']}">
-            <div class="card-title">{emoji} {novidade["empresa"]} • {novidade["tipo"]}</div>
-            <div class="card-value" style="font-size: 1.2rem">{novidade["titulo"]}</div>
-            <div class="card-subtitle">{novidade["desc"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        if noticia:
+            # Limitar título a 60 caracteres
+            titulo = noticia.title[:60] + "..." if len(noticia.title) > 60 else noticia.title
+            link = noticia.link
+            
+            st.markdown(f"""
+            <a href="{link}" target="_blank" style="text-decoration: none;">
+                <div class="card {empresa['cor']}" style="cursor: pointer; min-height: 140px;">
+                    <div class="card-title">{empresa['emoji']} {empresa["nome"]}</div>
+                    <div class="card-subtitle" style="font-size: 0.95rem; line-height: 1.4;">{titulo}</div>
+                    <div class="card-subtitle" style="margin-top: 8px; opacity: 0.7;">📰 Clique para ler</div>
+                </div>
+            </a>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="card {empresa['cor']}" style="min-height: 140px;">
+                <div class="card-title">{empresa['emoji']} {empresa["nome"]}</div>
+                <div class="card-subtitle">Sem notícias recentes</div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # 3. CLIMA
 st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
