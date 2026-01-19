@@ -314,7 +314,7 @@ DIVIDENDOS = [
     {"acao": "VALE3", "tipo": "Dividendo", "valor": "R$ 2,09", "data": "12/03", "cor": "bg-gradient-green"},
     {"acao": "PRIO3", "tipo": "Dividendo", "valor": "R$ 1,23", "data": "15/02", "cor": "bg-gradient-teal"},
     {"acao": "BBSE3", "tipo": "Dividendo", "valor": "R$ 0,89", "data": "28/02", "cor": "bg-gradient-purple"},
-    {"acao": "ITUB4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
+    {"acao": "VAMO4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
 ]
 
 # Selecionar 2 dividendos aleatórios para mostrar
