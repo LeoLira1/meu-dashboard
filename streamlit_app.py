@@ -43,7 +43,7 @@ with col1:
 # === AÇÕES ===
 with col2:
     st.subheader("📈 Ações B3")
-    tickers = ["PRIO3.SA", "PETR4.SA", "VALE3.SA", "ITUB4.SA"]
+    tickers = ["PRIO3.SA", "BBAS3.SA", "MOVI3.SA", "VAMO3.SA"]
     
     for ticker in tickers:
         try:
