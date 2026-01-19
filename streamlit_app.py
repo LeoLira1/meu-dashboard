@@ -321,7 +321,62 @@ for i, (col, indicacao) in enumerate(zip([col_f1, col_f2, col_f3], indicacoes_di
         </div>
         """, unsafe_allow_html=True)
 
-# 2. CLIMA
+# 2. IA & TECH
+st.markdown('<div class="section-header">🤖 IA & Tech</div>', unsafe_allow_html=True)
+
+# Novidades e lançamentos de IA
+NOVIDADES_IA = [
+    # OpenAI
+    {"empresa": "OpenAI", "titulo": "GPT-4o", "desc": "Modelo multimodal com voz, visão e texto em tempo real", "tipo": "Modelo", "cor": "bg-gradient-green"},
+    {"empresa": "OpenAI", "titulo": "Sora", "desc": "Gerador de vídeos por IA - texto para vídeo realista", "tipo": "Lançamento", "cor": "bg-gradient-green"},
+    {"empresa": "OpenAI", "titulo": "GPT-5", "desc": "Próxima geração em desenvolvimento - rumores de AGI", "tipo": "Em breve", "cor": "bg-gradient-green"},
+    {"empresa": "OpenAI", "titulo": "ChatGPT Pro", "desc": "Plano $200/mês com acesso ilimitado ao o1 pro", "tipo": "Produto", "cor": "bg-gradient-green"},
+    
+    # Anthropic / Claude
+    {"empresa": "Claude", "titulo": "Claude 3.5 Sonnet", "desc": "Melhor modelo atual - coding e análise superiores", "tipo": "Modelo", "cor": "bg-gradient-orange"},
+    {"empresa": "Claude", "titulo": "Claude 3 Opus", "desc": "Modelo mais inteligente para tarefas complexas", "tipo": "Modelo", "cor": "bg-gradient-orange"},
+    {"empresa": "Claude", "titulo": "Computer Use", "desc": "Claude pode controlar seu computador autonomamente", "tipo": "Feature", "cor": "bg-gradient-orange"},
+    {"empresa": "Claude", "titulo": "Artifacts", "desc": "Criação de código, docs e visualizações interativas", "tipo": "Feature", "cor": "bg-gradient-orange"},
+    
+    # Google / Gemini
+    {"empresa": "Gemini", "titulo": "Gemini 2.0 Flash", "desc": "Modelo rápido com capacidades agênticas nativas", "tipo": "Modelo", "cor": "bg-gradient-blue"},
+    {"empresa": "Gemini", "titulo": "Gemini Ultra", "desc": "Modelo mais poderoso do Google - multimodal", "tipo": "Modelo", "cor": "bg-gradient-blue"},
+    {"empresa": "Gemini", "titulo": "Project Astra", "desc": "Assistente universal com visão em tempo real", "tipo": "Em breve", "cor": "bg-gradient-blue"},
+    {"empresa": "Gemini", "titulo": "NotebookLM", "desc": "Estudo e pesquisa com IA - gera podcasts", "tipo": "Produto", "cor": "bg-gradient-blue"},
+    
+    # DeepSeek
+    {"empresa": "DeepSeek", "titulo": "DeepSeek V3", "desc": "Modelo chinês open-source rivaliza com GPT-4", "tipo": "Modelo", "cor": "bg-gradient-purple"},
+    {"empresa": "DeepSeek", "titulo": "DeepSeek R1", "desc": "Reasoning model - compete com o1 da OpenAI", "tipo": "Modelo", "cor": "bg-gradient-purple"},
+    {"empresa": "DeepSeek", "titulo": "DeepSeek Coder", "desc": "Especializado em programação - grátis e open", "tipo": "Modelo", "cor": "bg-gradient-purple"},
+    
+    # Outras empresas
+    {"empresa": "Meta", "titulo": "Llama 3.1 405B", "desc": "Maior modelo open-source disponível", "tipo": "Modelo", "cor": "bg-gradient-dark"},
+    {"empresa": "xAI", "titulo": "Grok 2", "desc": "IA do Elon Musk com acesso ao X/Twitter", "tipo": "Modelo", "cor": "bg-gradient-dark"},
+    {"empresa": "Mistral", "titulo": "Mixtral 8x22B", "desc": "MoE europeu - eficiente e poderoso", "tipo": "Modelo", "cor": "bg-gradient-dark"},
+    {"empresa": "Perplexity", "titulo": "Perplexity Pro", "desc": "Busca com IA - alternativa ao Google", "tipo": "Produto", "cor": "bg-gradient-teal"},
+    {"empresa": "Midjourney", "titulo": "V6.1", "desc": "Geração de imagens com qualidade fotográfica", "tipo": "Modelo", "cor": "bg-gradient-teal"},
+]
+
+# Selecionar 4 novidades aleatórias
+novidades_dia = random.sample(NOVIDADES_IA, 4)
+
+col_ia1, col_ia2, col_ia3, col_ia4 = st.columns(4)
+
+for col, novidade in zip([col_ia1, col_ia2, col_ia3, col_ia4], novidades_dia):
+    # Emoji por empresa
+    emoji_map = {"OpenAI": "🟢", "Claude": "🟠", "Gemini": "🔵", "DeepSeek": "🟣", "Meta": "⚪", "xAI": "⚫", "Mistral": "🔴", "Perplexity": "🌐", "Midjourney": "🎨"}
+    emoji = emoji_map.get(novidade["empresa"], "🤖")
+    
+    with col:
+        st.markdown(f"""
+        <div class="card {novidade['cor']}">
+            <div class="card-title">{emoji} {novidade["empresa"]} • {novidade["tipo"]}</div>
+            <div class="card-value" style="font-size: 1.2rem">{novidade["titulo"]}</div>
+            <div class="card-subtitle">{novidade["desc"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# 3. CLIMA
 st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 
@@ -346,7 +401,7 @@ with c2:
     </div>
     """, unsafe_allow_html=True)
 
-# 3. AÇÕES FAVORITAS
+# 4. AÇÕES FAVORITAS
 st.markdown('<div class="section-header">📈 Ações em Destaque</div>', unsafe_allow_html=True)
 stocks = {
     "PRIO3": "PRIO3.SA",
@@ -389,7 +444,7 @@ for i in range(3, 6):
         </div>
         """, unsafe_allow_html=True)
 
-# 4. NOTÍCIAS
+# 5. NOTÍCIAS
 st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
 n1, n2 = st.columns(2)
 
@@ -415,7 +470,7 @@ if st.button("🔄 Atualizar Tudo"):
     st.cache_data.clear()
     st.rerun()
 
-# 5. CARTEIRA CONSOLIDADA (no final)
+# 6. CARTEIRA CONSOLIDADA (no final)
 st.markdown('<div class="section-header">💰 Minha Carteira</div>', unsafe_allow_html=True)
 
 # Buscar dados
