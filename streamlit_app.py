@@ -277,9 +277,93 @@ def get_news(query):
 
 # --- LÓGICA DO DASHBOARD ---
 
-# Header
-st.markdown(f'<div class="main-header">Painel do Dia</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="update-time">Atualizado: {datetime.now().strftime("%d/%m %H:%M")} • Quirinópolis-GO</div>', unsafe_allow_html=True)
+# Header compacto com cards úteis
+col_hora, col_div1, col_div2, col_news = st.columns(4)
+
+# Card de Hora Atual
+agora = datetime.now()
+dia_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][agora.weekday()]
+
+with col_hora:
+    st.markdown(f"""
+    <div class="card bg-gradient-dark" style="text-align: center;">
+        <div class="card-title" style="justify-content: center;">📅 {dia_semana}, {agora.strftime("%d/%m")}</div>
+        <div class="card-value" style="font-size: 2.2rem;">{agora.strftime("%H:%M")}</div>
+        <div class="card-subtitle">Quirinópolis-GO</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Função para buscar notícias das ações
+@st.cache_data(ttl=1800)
+def get_stock_news(query):
+    try:
+        query_encoded = quote(query)
+        url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get(url, headers=headers, timeout=10)
+        feed = feedparser.parse(response.content)
+        if feed.entries:
+            return feed.entries[0]
+        return None
+    except:
+        return None
+
+# Dividendos / Proventos (dados aproximados - idealmente conectar a uma API)
+DIVIDENDOS = [
+    {"acao": "BBAS3", "tipo": "JCP", "valor": "R$ 0,47", "data": "31/01", "cor": "bg-gradient-blue"},
+    {"acao": "VALE3", "tipo": "Dividendo", "valor": "R$ 2,09", "data": "12/03", "cor": "bg-gradient-green"},
+    {"acao": "PRIO3", "tipo": "Dividendo", "valor": "R$ 1,23", "data": "15/02", "cor": "bg-gradient-teal"},
+    {"acao": "BBSE3", "tipo": "Dividendo", "valor": "R$ 0,89", "data": "28/02", "cor": "bg-gradient-purple"},
+    {"acao": "ITUB4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
+]
+
+# Selecionar 2 dividendos aleatórios para mostrar
+divs_mostrar = random.sample(DIVIDENDOS, 2)
+
+with col_div1:
+    div = divs_mostrar[0]
+    st.markdown(f"""
+    <div class="card {div['cor']}">
+        <div class="card-title">💰 {div['acao']} • {div['tipo']}</div>
+        <div class="card-value" style="font-size: 1.5rem;">{div['valor']}</div>
+        <div class="card-subtitle">Data: {div['data']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_div2:
+    div = divs_mostrar[1]
+    st.markdown(f"""
+    <div class="card {div['cor']}">
+        <div class="card-title">💰 {div['acao']} • {div['tipo']}</div>
+        <div class="card-value" style="font-size: 1.5rem;">{div['valor']}</div>
+        <div class="card-subtitle">Data: {div['data']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Notícia de uma ação da carteira
+with col_news:
+    acoes_news = ["PRIO3 petróleo", "VALE3 mineração", "BBAS3 banco", "AGRO3 agronegócio"]
+    acao_escolhida = random.choice(acoes_news)
+    noticia = get_stock_news(acao_escolhida)
+    
+    if noticia:
+        titulo = noticia.title[:50] + "..." if len(noticia.title) > 50 else noticia.title
+        st.markdown(f"""
+        <a href="{noticia.link}" target="_blank" style="text-decoration: none;">
+            <div class="card bg-gradient-red" style="cursor: pointer;">
+                <div class="card-title">📰 {acao_escolhida.split()[0]}</div>
+                <div class="card-subtitle" style="font-size: 0.9rem; line-height: 1.3;">{titulo}</div>
+                <div class="card-subtitle" style="margin-top: 5px; opacity: 0.7;">Clique para ler</div>
+            </div>
+        </a>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="card bg-gradient-red">
+            <div class="card-title">📰 Notícias</div>
+            <div class="card-subtitle">Sem notícias no momento</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # 1. FILMES & SÉRIES
 st.markdown('<div class="section-header">🎬 Filmes & Séries</div>', unsafe_allow_html=True)
