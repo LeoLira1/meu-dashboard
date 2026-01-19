@@ -277,11 +277,15 @@ def get_news(query):
 
 # --- LÓGICA DO DASHBOARD ---
 
+# Ajuste de fuso horário para Brasília
+import pytz
+fuso_brasilia = pytz.timezone('America/Sao_Paulo')
+agora = datetime.now(fuso_brasilia)
+
 # Header compacto com cards úteis
 col_hora, col_div1, col_div2, col_news = st.columns(4)
 
 # Card de Hora Atual
-agora = datetime.now()
 dia_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][agora.weekday()]
 
 with col_hora:
@@ -314,7 +318,7 @@ DIVIDENDOS = [
     {"acao": "VALE3", "tipo": "Dividendo", "valor": "R$ 2,09", "data": "12/03", "cor": "bg-gradient-green"},
     {"acao": "PRIO3", "tipo": "Dividendo", "valor": "R$ 1,23", "data": "15/02", "cor": "bg-gradient-teal"},
     {"acao": "BBSE3", "tipo": "Dividendo", "valor": "R$ 0,89", "data": "28/02", "cor": "bg-gradient-purple"},
-    {"acao": "VAMO4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
+    {"acao": "ITUB4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
 ]
 
 # Selecionar 2 dividendos aleatórios para mostrar
