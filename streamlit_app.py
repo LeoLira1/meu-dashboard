@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Meu Dashboard Pessoal")
+st.title("📊 NOTÍCIAS")
 st.caption(f"Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 # Criar colunas
