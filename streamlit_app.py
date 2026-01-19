@@ -37,6 +37,8 @@ st.markdown("""
     .bg-gradient-dark { background: linear-gradient(135deg, #232526 0%, #414345 100%); }
     .bg-gradient-purple { background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); }
     .bg-gradient-orange { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); }
+    .bg-gradient-gold { background: linear-gradient(135deg, #F7971E 0%, #FFD200 100%); }
+    .bg-gradient-teal { background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%); }
     
     .card-title { font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
     .card-value { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.2rem; }
@@ -67,9 +69,67 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- CARTEIRA BRASILEIRA (ticker: qtd, pm) ---
+CARTEIRA_BR = {
+    "PRIO3.SA": (267, 42.38),
+    "ALUP11.SA": (159, 28.79),
+    "BBAS3.SA": (236, 27.24),
+    "MOVI3.SA": (290, 6.82),
+    "AGRO3.SA": (135, 24.98),
+    "VALE3.SA": (25, 61.38),
+    "VAMO3.SA": (226, 6.75),
+    "BBSE3.SA": (19, 33.30),
+    "FESA4.SA": (95, 8.14),
+    "SLCE3.SA": (31, 18.00),
+    "TTEN3.SA": (17, 14.61),
+    "JALL3.SA": (43, 4.65),
+    "AMOB3.SA": (3, 0.00),
+    "GARE11.SA": (142, 9.10),
+    "KNCR11.SA": (9, 103.30),
+}
+
+# --- CARTEIRA AMERICANA (ticker: qtd, pm em USD) ---
+CARTEIRA_US = {
+    "VOO": (0.89425, 475.26),
+    "QQQ": (0.54245, 456.28),
+    "TSLA": (0.52762, 205.26),
+    "VNQ": (2.73961, 82.48),
+    "OKLO": (2.0, 9.75),
+    "VT": (1.0785, 112.68),
+    "VTI": (0.43415, 264.89),
+    "SLYV": (1.42787, 80.54),
+    "GOOGL": (0.32828, 174.61),
+    "IWD": (0.34465, 174.09),
+    "DIA": (0.1373, 400.58),
+    "DVY": (0.46175, 121.34),
+    "META": (0.08487, 541.77),
+    "BLK": (0.04487, 891.02),
+    "DE": (0.10018, 399.28),
+    "NVDA": (0.2276, 87.79),
+    "CAT": (0.07084, 352.91),
+    "AMD": (0.19059, 157.41),
+    "NUE": (0.14525, 172.12),
+    "COP": (0.24956, 120.21),
+    "DTE": (0.12989, 115.48),
+    "MSFT": (0.02586, 409.90),
+    "GLD": (0.08304, 240.85),
+    "NXE": (3.32257, 7.52),
+    "XOM": (0.33901, 117.99),
+    "SPY": (0.0546, 549.27),
+    "JNJ": (0.13323, 150.12),
+    "MPC": (0.14027, 178.23),
+    "AMZN": (0.05482, 182.42),
+    "DUK": (0.09776, 102.29),
+    "NEE": (0.13274, 75.34),
+    "DVN": (0.26214, 38.15),
+    "JPM": (0.02529, 197.71),
+    "MAGS": (0.09928, 54.19),
+    "INTR": (0.77762, 6.43),
+}
+
 # --- FUNÇÕES COM CACHE (PERFORMANCE) ---
 
-@st.cache_data(ttl=3600) # Atualiza a cada 1 hora
+@st.cache_data(ttl=3600)
 def get_weather(lat, lon):
     try:
         url = "https://api.open-meteo.com/v1/forecast"
@@ -82,7 +142,6 @@ def get_weather(lat, lon):
         response = requests.get(url, params=params, timeout=5)
         data = response.json().get("current_weather", {})
         
-        # Mapeamento simples de códigos WMO para Emojis
         code = data.get("weathercode", 0)
         icon = "☀️"
         if code in [1, 2, 3]: icon = "⛅"
@@ -98,11 +157,10 @@ def get_weather(lat, lon):
     except:
         return {"temp": "--", "wind": "--", "icon": "❓"}
 
-@st.cache_data(ttl=900) # Atualiza a cada 15 min
+@st.cache_data(ttl=900)
 def get_stock_data(ticker):
     try:
         acao = yf.Ticker(ticker)
-        # Tenta pegar info rápida, se falhar pega histórico
         hist = acao.history(period="2d")
         if len(hist) >= 1:
             atual = hist['Close'].iloc[-1]
@@ -113,29 +171,92 @@ def get_stock_data(ticker):
     except:
         return 0.0, 0.0
 
-@st.cache_data(ttl=1800) # Atualiza a cada 30 min
+@st.cache_data(ttl=900)
+def get_dolar():
+    """Retorna cotação do dólar"""
+    try:
+        ticker = yf.Ticker("USDBRL=X")
+        hist = ticker.history(period="1d")
+        if len(hist) >= 1:
+            return hist['Close'].iloc[-1]
+        return 6.0  # fallback
+    except:
+        return 6.0
+
+@st.cache_data(ttl=900)
+def calcular_variacao_carteira_br():
+    """Calcula variação diária da carteira BR em R$"""
+    variacao_total = 0.0
+    patrimonio_atual = 0.0
+    custo_total = 0.0
+    
+    for ticker, (qtd, pm) in CARTEIRA_BR.items():
+        try:
+            acao = yf.Ticker(ticker)
+            hist = acao.history(period="2d")
+            if len(hist) >= 1:
+                preco_atual = hist['Close'].iloc[-1]
+                preco_anterior = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual
+                
+                # Variação do dia em R$
+                variacao_dia = (preco_atual - preco_anterior) * qtd
+                variacao_total += variacao_dia
+                
+                # Patrimônio atual
+                patrimonio_atual += preco_atual * qtd
+                custo_total += pm * qtd
+        except:
+            continue
+    
+    # Lucro/Prejuízo total vs PM
+    lucro_total = patrimonio_atual - custo_total
+    
+    return variacao_total, patrimonio_atual, lucro_total
+
+@st.cache_data(ttl=900)
+def calcular_variacao_carteira_us():
+    """Calcula variação diária da carteira US em US$"""
+    variacao_total = 0.0
+    patrimonio_atual = 0.0
+    custo_total = 0.0
+    
+    for ticker, (qtd, pm) in CARTEIRA_US.items():
+        try:
+            acao = yf.Ticker(ticker)
+            hist = acao.history(period="2d")
+            if len(hist) >= 1:
+                preco_atual = hist['Close'].iloc[-1]
+                preco_anterior = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual
+                
+                variacao_dia = (preco_atual - preco_anterior) * qtd
+                variacao_total += variacao_dia
+                
+                patrimonio_atual += preco_atual * qtd
+                custo_total += pm * qtd
+        except:
+            continue
+    
+    lucro_total = patrimonio_atual - custo_total
+    
+    return variacao_total, patrimonio_atual, lucro_total
+
+@st.cache_data(ttl=1800)
 def get_news(query):
     try:
-        # Encoding correto da query
         query_encoded = quote(query)
         url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
         
-        # Headers para evitar bloqueio do Google
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         
-        # Requisição com requests primeiro (mais confiável)
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
-        # Parse do conteúdo RSS
         feed = feedparser.parse(response.content)
-        
         return feed.entries[:4]
         
-    except requests.RequestException as e:
-        # Fallback: tenta direto com feedparser
+    except requests.RequestException:
         try:
             query_encoded = quote(query)
             url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
@@ -146,7 +267,7 @@ def get_news(query):
             return feed.entries[:4]
         except:
             return []
-    except Exception as e:
+    except:
         return []
 
 # --- LÓGICA DO DASHBOARD ---
@@ -155,11 +276,72 @@ def get_news(query):
 st.markdown(f'<div class="main-header">Painel do Dia</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="update-time">Atualizado: {datetime.now().strftime("%d/%m %H:%M")} • Quirinópolis-GO</div>', unsafe_allow_html=True)
 
-# 1. RESUMO PESSOAL (Novo!)
+# 1. CARTEIRA CONSOLIDADA
+st.markdown('<div class="section-header">💰 Minha Carteira</div>', unsafe_allow_html=True)
+
+# Buscar dados
+dolar = get_dolar()
+var_br, patrim_br, lucro_br = calcular_variacao_carteira_br()
+var_us, patrim_us, lucro_us = calcular_variacao_carteira_us()
+
+# Converter US para BRL
+var_us_brl = var_us * dolar
+patrim_us_brl = patrim_us * dolar
+lucro_us_brl = lucro_us * dolar
+
+# Totais
+var_total_brl = var_br + var_us_brl
+patrim_total = patrim_br + patrim_us_brl
+lucro_total = lucro_br + lucro_us_brl
+
+# Cores baseadas no resultado
+cor_var = "bg-gradient-green" if var_total_brl >= 0 else "bg-gradient-red"
+cor_lucro = "bg-gradient-green" if lucro_total >= 0 else "bg-gradient-red"
+symbol_var = "▲" if var_total_brl >= 0 else "▼"
+symbol_lucro = "▲" if lucro_total >= 0 else "▼"
+
+col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+
+with col_c1:
+    st.markdown(f"""
+    <div class="card {cor_var}">
+        <div class="card-title">📊 Variação Hoje</div>
+        <div class="card-value">{symbol_var} R$ {abs(var_total_brl):,.2f}</div>
+        <div class="card-subtitle">BR: R$ {var_br:+,.2f} | US: R$ {var_us_brl:+,.2f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_c2:
+    st.markdown(f"""
+    <div class="card {cor_lucro}">
+        <div class="card-title">💎 Lucro vs PM</div>
+        <div class="card-value">{symbol_lucro} R$ {abs(lucro_total):,.2f}</div>
+        <div class="card-subtitle">BR: R$ {lucro_br:+,.2f} | US: R$ {lucro_us_brl:+,.2f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_c3:
+    st.markdown(f"""
+    <div class="card bg-gradient-teal">
+        <div class="card-title">🏦 Patrimônio Total</div>
+        <div class="card-value">R$ {patrim_total:,.2f}</div>
+        <div class="card-subtitle">BR: R$ {patrim_br:,.2f} | US: R$ {patrim_us_brl:,.2f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_c4:
+    st.markdown(f"""
+    <div class="card bg-gradient-gold">
+        <div class="card-title">💵 Dólar</div>
+        <div class="card-value">R$ {dolar:.4f}</div>
+        <div class="card-subtitle">Cotação atual</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 2. STATUS & METAS
 st.markdown('<div class="section-header">💪 Status & Metas</div>', unsafe_allow_html=True)
 col_p1, col_p2, col_p3 = st.columns(3)
 
-# Lógica do Treino
 agora = datetime.now()
 hora_treino = agora.replace(hour=20, minute=0, second=0, microsecond=0)
 if agora.hour >= 21:
@@ -184,7 +366,6 @@ with col_p1:
     """, unsafe_allow_html=True)
 
 with col_p2:
-    # Dados mockados baseados no seu histórico recente (Ideal conectar a um banco de dados real depois)
     st.markdown("""
     <div class="card bg-gradient-purple">
         <div class="card-title">🍗 Proteína (Meta: 200g)</div>
@@ -194,7 +375,6 @@ with col_p2:
     """, unsafe_allow_html=True)
 
 with col_p3:
-    # Easter Egg Anime
     quotes = [
         "A dor é momentânea, a desistência dura para sempre. (One Piece)",
         "Eu não vou morrer, parceiro. (One Piece)",
@@ -208,14 +388,11 @@ with col_p3:
     </div>
     """, unsafe_allow_html=True)
 
-
-# 2. CLIMA
+# 3. CLIMA
 st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 
-# Quirinópolis (Atual)
 w_quiri = get_weather(-18.4486, -50.4519)
-# Coruripe (Interesse)
 w_coru = get_weather(-10.1264, -36.1756)
 
 with c1:
@@ -236,8 +413,8 @@ with c2:
     </div>
     """, unsafe_allow_html=True)
 
-# 3. AÇÕES
-st.markdown('<div class="section-header">📈 Mercado Financeiro</div>', unsafe_allow_html=True)
+# 4. AÇÕES FAVORITAS
+st.markdown('<div class="section-header">📈 Ações em Destaque</div>', unsafe_allow_html=True)
 stocks = {
     "PRIO3": "PRIO3.SA",
     "BBAS3": "BBAS3.SA",
@@ -250,15 +427,13 @@ stocks = {
 cols_s = st.columns(3)
 stocks_list = list(stocks.items())
 
-# Primeira linha (3 ações)
 for i in range(3):
     name, ticker = stocks_list[i]
     price, var = get_stock_data(ticker)
     symbol = "▲" if var >= 0 else "▼"
     
     with cols_s[i]:
-        # Formatação especial para dólar
-        prefix = "R$" if name != "DÓLAR" else "R$"
+        prefix = "R$"
         st.markdown(f"""
         <div class="card bg-gradient-dark">
             <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
@@ -266,7 +441,6 @@ for i in range(3):
         </div>
         """, unsafe_allow_html=True)
 
-# Segunda linha (3 ações)
 cols_s2 = st.columns(3)
 for i in range(3, 6):
     name, ticker = stocks_list[i]
@@ -282,7 +456,7 @@ for i in range(3, 6):
         </div>
         """, unsafe_allow_html=True)
 
-# 4. NOTÍCIAS
+# 5. NOTÍCIAS
 st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
 n1, n2 = st.columns(2)
 
