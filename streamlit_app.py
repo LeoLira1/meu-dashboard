@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Configuração da página
 st.set_page_config(
-    page_title="Meu Dashboard",
+    page_title="JARVIS",
     page_icon="📊",
     layout="wide"
 )
