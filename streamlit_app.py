@@ -134,33 +134,64 @@ CARTEIRA_US = {
 
 # --- FUNÇÕES COM CACHE (PERFORMANCE) ---
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=900)  # Atualiza a cada 15 min para clima mais preciso
 def get_weather(lat, lon):
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
             "latitude": lat,
             "longitude": lon,
-            "current_weather": True,
+            "current": "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation",
             "timezone": "America/Sao_Paulo"
         }
         response = requests.get(url, params=params, timeout=5)
-        data = response.json().get("current_weather", {})
+        data = response.json().get("current", {})
         
-        code = data.get("weathercode", 0)
-        icon = "☀️"
-        if code in [1, 2, 3]: icon = "⛅"
-        elif code in [45, 48]: icon = "🌫️"
-        elif code in [51, 53, 55, 61, 63, 65]: icon = "🌧️"
-        elif code >= 80: icon = "⛈️"
+        # Mapeamento de códigos WMO para Emojis e descrição
+        code = data.get("weather_code", 0)
+        
+        # Códigos WMO mais detalhados
+        weather_map = {
+            0: ("☀️", "Céu limpo"),
+            1: ("🌤️", "Parcialmente limpo"),
+            2: ("⛅", "Parcialmente nublado"),
+            3: ("☁️", "Nublado"),
+            45: ("🌫️", "Neblina"),
+            48: ("🌫️", "Neblina com geada"),
+            51: ("🌦️", "Chuvisco leve"),
+            53: ("🌦️", "Chuvisco"),
+            55: ("🌧️", "Chuvisco forte"),
+            61: ("🌧️", "Chuva leve"),
+            63: ("🌧️", "Chuva moderada"),
+            65: ("🌧️", "Chuva forte"),
+            66: ("🌧️", "Chuva congelante"),
+            67: ("🌧️", "Chuva congelante forte"),
+            71: ("🌨️", "Neve leve"),
+            73: ("🌨️", "Neve"),
+            75: ("❄️", "Neve forte"),
+            80: ("🌦️", "Pancadas leves"),
+            81: ("🌧️", "Pancadas"),
+            82: ("⛈️", "Pancadas fortes"),
+            85: ("🌨️", "Pancadas de neve"),
+            86: ("❄️", "Nevasca"),
+            95: ("⛈️", "Tempestade"),
+            96: ("⛈️", "Tempestade com granizo"),
+            99: ("⛈️", "Tempestade severa"),
+        }
+        
+        icon, descricao = weather_map.get(code, ("❓", "Indisponível"))
+        precipitacao = data.get("precipitation", 0)
         
         return {
-            "temp": data.get("temperature", "--"),
-            "wind": data.get("windspeed", "--"),
-            "icon": icon
+            "temp": data.get("temperature_2m", "--"),
+            "wind": data.get("wind_speed_10m", "--"),
+            "humidity": data.get("relative_humidity_2m", "--"),
+            "icon": icon,
+            "descricao": descricao,
+            "precipitacao": precipitacao
         }
     except:
-        return {"temp": "--", "wind": "--", "icon": "❓"}
+        return {"temp": "--", "wind": "--", "humidity": "--", "icon": "❓", "descricao": "Erro", "precipitacao": 0}
 
 @st.cache_data(ttl=900)
 def get_stock_data(ticker):
@@ -482,20 +513,24 @@ w_quiri = get_weather(-18.4486, -50.4519)
 w_coru = get_weather(-10.1264, -36.1756)
 
 with c1:
+    precip_txt = f" • 💧 {w_quiri['precipitacao']}mm" if w_quiri['precipitacao'] > 0 else ""
     st.markdown(f"""
     <div class="card bg-gradient-blue">
         <div class="card-title">📍 Quirinópolis - GO</div>
         <div class="card-value">{w_quiri['icon']} {w_quiri['temp']}°C</div>
-        <div class="card-subtitle">Vento: {w_quiri['wind']} km/h</div>
+        <div class="card-subtitle">{w_quiri['descricao']}{precip_txt}</div>
+        <div class="card-subtitle">💨 {w_quiri['wind']} km/h • 💧 {w_quiri['humidity']}%</div>
     </div>
     """, unsafe_allow_html=True)
 
 with c2:
+    precip_txt = f" • 💧 {w_coru['precipitacao']}mm" if w_coru['precipitacao'] > 0 else ""
     st.markdown(f"""
     <div class="card bg-gradient-green">
         <div class="card-title">🌊 Coruripe - AL</div>
         <div class="card-value">{w_coru['icon']} {w_coru['temp']}°C</div>
-        <div class="card-subtitle">Vento: {w_coru['wind']} km/h</div>
+        <div class="card-subtitle">{w_coru['descricao']}{precip_txt}</div>
+        <div class="card-subtitle">💨 {w_coru['wind']} km/h • 💧 {w_coru['humidity']}%</div>
     </div>
     """, unsafe_allow_html=True)
 
