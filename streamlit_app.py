@@ -163,9 +163,9 @@ st.markdown('<div class="section-title">📈 Ações B3</div>', unsafe_allow_htm
 
 tickers_info = {
     "PRIO3.SA": {"nome": "PRIO3", "cor": "card-red"},
-    "PETR4.SA": {"nome": "PETR4", "cor": "card-dark"},
-    "VALE3.SA": {"nome": "VALE3", "cor": "card-purple"},
-    "ITUB4.SA": {"nome": "ITUB4", "cor": "card-orange"},
+    "PETR4.SA": {"nome": "MOVI3", "cor": "card-dark"},
+    "VALE3.SA": {"nome": "VAMO3", "cor": "card-purple"},
+    "ITUB4.SA": {"nome": "BBAS3", "cor": "card-orange"},
 }
 
 cols = st.columns(4)
