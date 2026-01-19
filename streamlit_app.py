@@ -276,7 +276,146 @@ def get_news(query):
 st.markdown(f'<div class="main-header">Painel do Dia</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="update-time">Atualizado: {datetime.now().strftime("%d/%m %H:%M")} • Quirinópolis-GO</div>', unsafe_allow_html=True)
 
-# 1. CARTEIRA CONSOLIDADA
+# 1. FILMES & SÉRIES
+st.markdown('<div class="section-header">🎬 Filmes & Séries</div>', unsafe_allow_html=True)
+
+# Lista de indicações (filmes e séries com nota e gênero)
+INDICACOES = [
+    {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video"},
+    {"titulo": "Se7en", "tipo": "Filme", "genero": "Suspense/Crime", "nota": "8.6", "onde": "Netflix"},
+    {"titulo": "Interestelar", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.7", "onde": "Prime Video"},
+    {"titulo": "O Poço", "tipo": "Filme", "genero": "Terror/Suspense", "nota": "7.0", "onde": "Netflix"},
+    {"titulo": "Clube da Luta", "tipo": "Filme", "genero": "Drama/Suspense", "nota": "8.8", "onde": "Star+"},
+    {"titulo": "Parasita", "tipo": "Filme", "genero": "Suspense/Drama", "nota": "8.5", "onde": "Prime Video"},
+    {"titulo": "A Origem", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "HBO Max"},
+    {"titulo": "O Jogo da Imitação", "tipo": "Filme", "genero": "Drama/Biografia", "nota": "8.0", "onde": "Netflix"},
+    {"titulo": "Duna: Parte 2", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "Max"},
+    {"titulo": "Whiplash", "tipo": "Filme", "genero": "Drama/Musical", "nota": "8.5", "onde": "Prime Video"},
+    {"titulo": "Breaking Bad", "tipo": "Série", "genero": "Drama/Crime", "nota": "9.5", "onde": "Netflix"},
+    {"titulo": "Succession", "tipo": "Série", "genero": "Drama", "nota": "8.9", "onde": "Max"},
+    {"titulo": "Dark", "tipo": "Série", "genero": "Ficção Científica", "nota": "8.7", "onde": "Netflix"},
+    {"titulo": "Severance", "tipo": "Série", "genero": "Suspense/Ficção", "nota": "8.7", "onde": "Apple TV+"},
+    {"titulo": "The Bear", "tipo": "Série", "genero": "Drama/Comédia", "nota": "8.6", "onde": "Star+"},
+    {"titulo": "Shogun", "tipo": "Série", "genero": "Drama/Histórico", "nota": "8.7", "onde": "Star+"},
+    {"titulo": "True Detective S1", "tipo": "Série", "genero": "Crime/Drama", "nota": "9.0", "onde": "Max"},
+    {"titulo": "Chernobyl", "tipo": "Série", "genero": "Drama/Histórico", "nota": "9.4", "onde": "Max"},
+    {"titulo": "The Last of Us", "tipo": "Série", "genero": "Drama/Ação", "nota": "8.8", "onde": "Max"},
+    {"titulo": "Bem-vindos ao Derry", "tipo": "Série", "genero": "Terror", "nota": "8.1", "onde": "Max"},
+]
+
+# Selecionar 3 indicações aleatórias
+indicacoes_dia = random.sample(INDICACOES, 3)
+
+col_f1, col_f2, col_f3 = st.columns(3)
+
+cores_filmes = ["bg-gradient-purple", "bg-gradient-red", "bg-gradient-teal"]
+
+for i, (col, indicacao) in enumerate(zip([col_f1, col_f2, col_f3], indicacoes_dia)):
+    emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
+    with col:
+        st.markdown(f"""
+        <div class="card {cores_filmes[i]}">
+            <div class="card-title">{emoji} {indicacao["tipo"]} • ⭐ {indicacao["nota"]}</div>
+            <div class="card-value" style="font-size: 1.3rem">{indicacao["titulo"]}</div>
+            <div class="card-subtitle">{indicacao["genero"]} • {indicacao["onde"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# 2. CLIMA
+st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
+c1, c2 = st.columns(2)
+
+w_quiri = get_weather(-18.4486, -50.4519)
+w_coru = get_weather(-10.1264, -36.1756)
+
+with c1:
+    st.markdown(f"""
+    <div class="card bg-gradient-blue">
+        <div class="card-title">📍 Quirinópolis - GO</div>
+        <div class="card-value">{w_quiri['icon']} {w_quiri['temp']}°C</div>
+        <div class="card-subtitle">Vento: {w_quiri['wind']} km/h</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c2:
+    st.markdown(f"""
+    <div class="card bg-gradient-green">
+        <div class="card-title">🌊 Coruripe - AL</div>
+        <div class="card-value">{w_coru['icon']} {w_coru['temp']}°C</div>
+        <div class="card-subtitle">Vento: {w_coru['wind']} km/h</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 3. AÇÕES FAVORITAS
+st.markdown('<div class="section-header">📈 Ações em Destaque</div>', unsafe_allow_html=True)
+stocks = {
+    "PRIO3": "PRIO3.SA",
+    "BBAS3": "BBAS3.SA",
+    "MOVI3": "MOVI3.SA",
+    "VAMO3": "VAMO3.SA",
+    "AGRO3": "AGRO3.SA",
+    "DÓLAR": "USDBRL=X"
+}
+
+cols_s = st.columns(3)
+stocks_list = list(stocks.items())
+
+for i in range(3):
+    name, ticker = stocks_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    
+    with cols_s[i]:
+        prefix = "R$"
+        st.markdown(f"""
+        <div class="card bg-gradient-dark">
+            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">{prefix} {price:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+cols_s2 = st.columns(3)
+for i in range(3, 6):
+    name, ticker = stocks_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    
+    with cols_s2[i-3]:
+        prefix = "R$"
+        st.markdown(f"""
+        <div class="card bg-gradient-dark">
+            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">{prefix} {price:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# 4. NOTÍCIAS
+st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
+n1, n2 = st.columns(2)
+
+with n1:
+    st.markdown("**🌴 Coruripe & Região**")
+    news_al = get_news("Coruripe Alagoas")
+    if news_al:
+        for item in news_al:
+            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
+    else:
+        st.info("Sem notícias recentes.")
+
+with n2:
+    st.markdown("**📍 Quirinópolis & Goiás**")
+    news_go = get_news("Quirinópolis Goiás")
+    if news_go:
+        for item in news_go:
+            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
+    else:
+        st.info("Sem notícias recentes.")
+
+if st.button("🔄 Atualizar Tudo"):
+    st.cache_data.clear()
+    st.rerun()
+
+# 5. CARTEIRA CONSOLIDADA (no final)
 st.markdown('<div class="section-header">💰 Minha Carteira</div>', unsafe_allow_html=True)
 
 # Buscar dados
@@ -337,147 +476,3 @@ with col_c4:
         <div class="card-subtitle">Cotação atual</div>
     </div>
     """, unsafe_allow_html=True)
-
-# 2. STATUS & METAS
-st.markdown('<div class="section-header">💪 Status & Metas</div>', unsafe_allow_html=True)
-col_p1, col_p2, col_p3 = st.columns(3)
-
-agora = datetime.now()
-hora_treino = agora.replace(hour=20, minute=0, second=0, microsecond=0)
-if agora.hour >= 21:
-    msg_treino = "Treino Concluído? ✅"
-    cor_treino = "bg-gradient-green"
-elif agora.hour >= 20:
-    msg_treino = "HORA DE ESMAGAR! 🔥"
-    cor_treino = "bg-gradient-red"
-else:
-    delta = hora_treino - agora
-    horas = delta.seconds // 3600
-    minutos = (delta.seconds % 3600) // 60
-    msg_treino = f"Faltam {horas}h {minutos}m"
-    cor_treino = "bg-gradient-dark"
-
-with col_p1:
-    st.markdown(f"""
-    <div class="card {cor_treino}">
-        <div class="card-title">🏋️ Próximo Treino (20h)</div>
-        <div class="card-value" style="font-size: 1.5rem">{msg_treino}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col_p2:
-    st.markdown("""
-    <div class="card bg-gradient-purple">
-        <div class="card-title">🍗 Proteína (Meta: 200g)</div>
-        <div class="card-value" style="font-size: 1.5rem">167g / 200g</div>
-        <div class="card-subtitle">Faltam 33g hoje</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col_p3:
-    quotes = [
-        "A dor é momentânea, a desistência dura para sempre. (One Piece)",
-        "Eu não vou morrer, parceiro. (One Piece)",
-        "Erga-se! (Solo Leveling)",
-        "O tempo não espera por ninguém. (Sousou no Frieren)"
-    ]
-    st.markdown(f"""
-    <div class="card bg-gradient-orange">
-        <div class="card-title">⚔️ Anime Quote</div>
-        <div class="card-subtitle" style="font-style: italic">"{random.choice(quotes)}"</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# 3. CLIMA
-st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
-c1, c2 = st.columns(2)
-
-w_quiri = get_weather(-18.4486, -50.4519)
-w_coru = get_weather(-10.1264, -36.1756)
-
-with c1:
-    st.markdown(f"""
-    <div class="card bg-gradient-blue">
-        <div class="card-title">📍 Quirinópolis - GO</div>
-        <div class="card-value">{w_quiri['icon']} {w_quiri['temp']}°C</div>
-        <div class="card-subtitle">Vento: {w_quiri['wind']} km/h</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c2:
-    st.markdown(f"""
-    <div class="card bg-gradient-green">
-        <div class="card-title">🌊 Coruripe - AL</div>
-        <div class="card-value">{w_coru['icon']} {w_coru['temp']}°C</div>
-        <div class="card-subtitle">Vento: {w_coru['wind']} km/h</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# 4. AÇÕES FAVORITAS
-st.markdown('<div class="section-header">📈 Ações em Destaque</div>', unsafe_allow_html=True)
-stocks = {
-    "PRIO3": "PRIO3.SA",
-    "BBAS3": "BBAS3.SA",
-    "MOVI3": "MOVI3.SA",
-    "VAMO3": "VAMO3.SA",
-    "AGRO3": "AGRO3.SA",
-    "DÓLAR": "USDBRL=X"
-}
-
-cols_s = st.columns(3)
-stocks_list = list(stocks.items())
-
-for i in range(3):
-    name, ticker = stocks_list[i]
-    price, var = get_stock_data(ticker)
-    symbol = "▲" if var >= 0 else "▼"
-    
-    with cols_s[i]:
-        prefix = "R$"
-        st.markdown(f"""
-        <div class="card bg-gradient-dark">
-            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
-            <div class="card-value">{prefix} {price:.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-cols_s2 = st.columns(3)
-for i in range(3, 6):
-    name, ticker = stocks_list[i]
-    price, var = get_stock_data(ticker)
-    symbol = "▲" if var >= 0 else "▼"
-    
-    with cols_s2[i-3]:
-        prefix = "R$"
-        st.markdown(f"""
-        <div class="card bg-gradient-dark">
-            <div class="card-title">{name} <span class="stock-badge">{symbol} {var:.1f}%</span></div>
-            <div class="card-value">{prefix} {price:.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# 5. NOTÍCIAS
-st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
-n1, n2 = st.columns(2)
-
-with n1:
-    st.markdown("**🌴 Coruripe & Região**")
-    news_al = get_news("Coruripe Alagoas")
-    if news_al:
-        for item in news_al:
-            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
-    else:
-        st.info("Sem notícias recentes.")
-
-with n2:
-    st.markdown("**📍 Quirinópolis & Goiás**")
-    news_go = get_news("Quirinópolis Goiás")
-    if news_go:
-        for item in news_go:
-            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
-    else:
-        st.info("Sem notícias recentes.")
-
-if st.button("🔄 Atualizar Tudo"):
-    st.cache_data.clear()
-    st.rerun()
