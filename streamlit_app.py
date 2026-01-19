@@ -3,6 +3,7 @@ import yfinance as yf
 import requests
 import feedparser
 from datetime import datetime, timedelta
+from urllib.parse import quote
 import random
 
 # Configuração da página
@@ -115,11 +116,37 @@ def get_stock_data(ticker):
 @st.cache_data(ttl=1800) # Atualiza a cada 30 min
 def get_news(query):
     try:
-        # Codificando URL para evitar erros com acentos
-        url = f"https://news.google.com/rss/search?q={query}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-        feed = feedparser.parse(url)
+        # Encoding correto da query
+        query_encoded = quote(query)
+        url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        
+        # Headers para evitar bloqueio do Google
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        # Requisição com requests primeiro (mais confiável)
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # Parse do conteúdo RSS
+        feed = feedparser.parse(response.content)
+        
         return feed.entries[:4]
-    except:
+        
+    except requests.RequestException as e:
+        # Fallback: tenta direto com feedparser
+        try:
+            query_encoded = quote(query)
+            url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+            feed = feedparser.parse(
+                url,
+                agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            )
+            return feed.entries[:4]
+        except:
+            return []
+    except Exception as e:
         return []
 
 # --- LÓGICA DO DASHBOARD ---
