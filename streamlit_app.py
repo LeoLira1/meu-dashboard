@@ -343,101 +343,63 @@ def get_stock_news(query):
     except:
         return None
 
-# Google Tasks - Configuração
-def get_google_tasks():
-    """Busca tarefas do Google Tasks"""
-    try:
-        import os
-        from google.oauth2.credentials import Credentials
-        from google_auth_oauthlib.flow import InstalledAppFlow
-        from google.auth.transport.requests import Request
-        from googleapiclient.discovery import build
-        import pickle
-        
-        SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
-        creds = None
-        
-        # Token salvo de sessões anteriores
-        if os.path.exists('token_tasks.pickle'):
-            with open('token_tasks.pickle', 'rb') as token:
-                creds = pickle.load(token)
-        
-        # Se não tem credenciais válidas, faz login
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                if os.path.exists('credentials.json'):
-                    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-                    creds = flow.run_local_server(port=0)
-                else:
-                    return None
-            
-            # Salva o token para próximas execuções
-            with open('token_tasks.pickle', 'wb') as token:
-                pickle.dump(creds, token)
-        
-        # Conecta na API
-        service = build('tasks', 'v1', credentials=creds)
-        
-        # Busca a lista de tarefas padrão
-        results = service.tasks().list(tasklist='@default', maxResults=5, showCompleted=False).execute()
-        tasks = results.get('items', [])
-        
-        return tasks
-    except Exception as e:
-        return None
+# Categorias de notícias para os cards
+CATEGORIAS_NEWS = [
+    {"nome": "Tecnologia", "query": "tecnologia inovação", "emoji": "💻", "cor": "bg-gradient-purple"},
+    {"nome": "Ciência", "query": "ciência descoberta pesquisa", "emoji": "🔬", "cor": "bg-gradient-blue"},
+    {"nome": "Espaço", "query": "NASA espaço astronomia", "emoji": "🚀", "cor": "bg-gradient-teal"},
+    {"nome": "Economia", "query": "economia Brasil mercado", "emoji": "📊", "cor": "bg-gradient-green"},
+    {"nome": "Mundo", "query": "internacional mundo notícias", "emoji": "🌍", "cor": "bg-gradient-orange"},
+]
 
-# Buscar tarefas do Google Tasks
-tasks = get_google_tasks()
+# Selecionar 2 categorias aleatórias para os cards
+categorias_selecionadas = random.sample(CATEGORIAS_NEWS, 2)
 
-# Card de Tarefa 1
-if tasks and len(tasks) >= 1:
-    with col_div1:
-        task1 = tasks[0]
-        titulo1 = task1.get('title', 'Sem título')[:30]
-        if len(task1.get('title', '')) > 30:
-            titulo1 += "..."
-        due1 = task1.get('due', '')[:10] if task1.get('due') else ''
+# Card de Notícia 1
+with col_div1:
+    cat1 = categorias_selecionadas[0]
+    noticia1 = get_stock_news(cat1["query"])
+    
+    if noticia1:
+        titulo1 = noticia1.title[:45] + "..." if len(noticia1.title) > 45 else noticia1.title
         st.markdown(f"""
-        <div class="card bg-gradient-purple">
-            <div class="card-title">✅ Tarefa</div>
-            <div class="card-subtitle" style="font-size: 1rem; line-height: 1.4;">{titulo1}</div>
-            <div class="card-subtitle" style="margin-top: 8px; opacity: 0.7;">📅 {due1 if due1 else 'Sem data'}</div>
-        </div>
+        <a href="{noticia1.link}" target="_blank" style="text-decoration: none;">
+            <div class="card {cat1['cor']}" style="cursor: pointer;">
+                <div class="card-title">{cat1['emoji']} {cat1['nome']}</div>
+                <div class="card-subtitle" style="font-size: 0.9rem; line-height: 1.3;">{titulo1}</div>
+                <div class="card-subtitle" style="margin-top: 5px; opacity: 0.7;">Clique para ler</div>
+            </div>
+        </a>
         """, unsafe_allow_html=True)
-else:
-    with col_div1:
-        st.markdown("""
-        <div class="card bg-gradient-purple">
-            <div class="card-title">✅ Google Tasks</div>
-            <div class="card-subtitle" style="font-size: 0.85rem;">Adicione credentials.json</div>
-            <div class="card-subtitle" style="opacity: 0.7;">para sincronizar</div>
+    else:
+        st.markdown(f"""
+        <div class="card {cat1['cor']}">
+            <div class="card-title">{cat1['emoji']} {cat1['nome']}</div>
+            <div class="card-subtitle">Sem notícias no momento</div>
         </div>
         """, unsafe_allow_html=True)
 
-# Card de Tarefa 2
-if tasks and len(tasks) >= 2:
-    with col_div2:
-        task2 = tasks[1]
-        titulo2 = task2.get('title', 'Sem título')[:30]
-        if len(task2.get('title', '')) > 30:
-            titulo2 += "..."
-        due2 = task2.get('due', '')[:10] if task2.get('due') else ''
+# Card de Notícia 2
+with col_div2:
+    cat2 = categorias_selecionadas[1]
+    noticia2 = get_stock_news(cat2["query"])
+    
+    if noticia2:
+        titulo2 = noticia2.title[:45] + "..." if len(noticia2.title) > 45 else noticia2.title
         st.markdown(f"""
-        <div class="card bg-gradient-blue">
-            <div class="card-title">✅ Tarefa</div>
-            <div class="card-subtitle" style="font-size: 1rem; line-height: 1.4;">{titulo2}</div>
-            <div class="card-subtitle" style="margin-top: 8px; opacity: 0.7;">📅 {due2 if due2 else 'Sem data'}</div>
-        </div>
+        <a href="{noticia2.link}" target="_blank" style="text-decoration: none;">
+            <div class="card {cat2['cor']}" style="cursor: pointer;">
+                <div class="card-title">{cat2['emoji']} {cat2['nome']}</div>
+                <div class="card-subtitle" style="font-size: 0.9rem; line-height: 1.3;">{titulo2}</div>
+                <div class="card-subtitle" style="margin-top: 5px; opacity: 0.7;">Clique para ler</div>
+            </div>
+        </a>
         """, unsafe_allow_html=True)
-else:
-    with col_div2:
-        st.markdown("""
-        <div class="card bg-gradient-blue">
-            <div class="card-title">✅ Google Tasks</div>
-            <div class="card-subtitle" style="font-size: 0.85rem;">Sem tarefas</div>
-            <div class="card-subtitle" style="opacity: 0.7;">ou aguardando config</div>
+    else:
+        st.markdown(f"""
+        <div class="card {cat2['cor']}">
+            <div class="card-title">{cat2['emoji']} {cat2['nome']}</div>
+            <div class="card-subtitle">Sem notícias no momento</div>
         </div>
         """, unsafe_allow_html=True)
 
