@@ -343,37 +343,103 @@ def get_stock_news(query):
     except:
         return None
 
-# Dividendos / Proventos (dados aproximados - idealmente conectar a uma API)
-DIVIDENDOS = [
-    {"acao": "BBAS3", "tipo": "JCP", "valor": "R$ 0,47", "data": "31/01", "cor": "bg-gradient-blue"},
-    {"acao": "VALE3", "tipo": "Dividendo", "valor": "R$ 2,09", "data": "12/03", "cor": "bg-gradient-green"},
-    {"acao": "PRIO3", "tipo": "Dividendo", "valor": "R$ 1,23", "data": "15/02", "cor": "bg-gradient-teal"},
-    {"acao": "BBSE3", "tipo": "Dividendo", "valor": "R$ 0,89", "data": "28/02", "cor": "bg-gradient-purple"},
-    {"acao": "ITUB4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
-]
+# Google Tasks - Configuração
+def get_google_tasks():
+    """Busca tarefas do Google Tasks"""
+    try:
+        import os
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        from google.auth.transport.requests import Request
+        from googleapiclient.discovery import build
+        import pickle
+        
+        SCOPES = ['https://www.googleapis.com/auth/tasks.readonly']
+        creds = None
+        
+        # Token salvo de sessões anteriores
+        if os.path.exists('token_tasks.pickle'):
+            with open('token_tasks.pickle', 'rb') as token:
+                creds = pickle.load(token)
+        
+        # Se não tem credenciais válidas, faz login
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                if os.path.exists('credentials.json'):
+                    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+                    creds = flow.run_local_server(port=0)
+                else:
+                    return None
+            
+            # Salva o token para próximas execuções
+            with open('token_tasks.pickle', 'wb') as token:
+                pickle.dump(creds, token)
+        
+        # Conecta na API
+        service = build('tasks', 'v1', credentials=creds)
+        
+        # Busca a lista de tarefas padrão
+        results = service.tasks().list(tasklist='@default', maxResults=5, showCompleted=False).execute()
+        tasks = results.get('items', [])
+        
+        return tasks
+    except Exception as e:
+        return None
 
-# Selecionar 2 dividendos aleatórios para mostrar
-divs_mostrar = random.sample(DIVIDENDOS, 2)
+# Buscar tarefas do Google Tasks
+tasks = get_google_tasks()
 
-with col_div1:
-    div = divs_mostrar[0]
-    st.markdown(f"""
-    <div class="card {div['cor']}">
-        <div class="card-title">💰 {div['acao']} • {div['tipo']}</div>
-        <div class="card-value" style="font-size: 1.5rem;">{div['valor']}</div>
-        <div class="card-subtitle">Data: {div['data']}</div>
-    </div>
-    """, unsafe_allow_html=True)
+# Card de Tarefa 1
+if tasks and len(tasks) >= 1:
+    with col_div1:
+        task1 = tasks[0]
+        titulo1 = task1.get('title', 'Sem título')[:30]
+        if len(task1.get('title', '')) > 30:
+            titulo1 += "..."
+        due1 = task1.get('due', '')[:10] if task1.get('due') else ''
+        st.markdown(f"""
+        <div class="card bg-gradient-purple">
+            <div class="card-title">✅ Tarefa</div>
+            <div class="card-subtitle" style="font-size: 1rem; line-height: 1.4;">{titulo1}</div>
+            <div class="card-subtitle" style="margin-top: 8px; opacity: 0.7;">📅 {due1 if due1 else 'Sem data'}</div>
+        </div>
+        """, unsafe_allow_html=True)
+else:
+    with col_div1:
+        st.markdown("""
+        <div class="card bg-gradient-purple">
+            <div class="card-title">✅ Google Tasks</div>
+            <div class="card-subtitle" style="font-size: 0.85rem;">Adicione credentials.json</div>
+            <div class="card-subtitle" style="opacity: 0.7;">para sincronizar</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col_div2:
-    div = divs_mostrar[1]
-    st.markdown(f"""
-    <div class="card {div['cor']}">
-        <div class="card-title">💰 {div['acao']} • {div['tipo']}</div>
-        <div class="card-value" style="font-size: 1.5rem;">{div['valor']}</div>
-        <div class="card-subtitle">Data: {div['data']}</div>
-    </div>
-    """, unsafe_allow_html=True)
+# Card de Tarefa 2
+if tasks and len(tasks) >= 2:
+    with col_div2:
+        task2 = tasks[1]
+        titulo2 = task2.get('title', 'Sem título')[:30]
+        if len(task2.get('title', '')) > 30:
+            titulo2 += "..."
+        due2 = task2.get('due', '')[:10] if task2.get('due') else ''
+        st.markdown(f"""
+        <div class="card bg-gradient-blue">
+            <div class="card-title">✅ Tarefa</div>
+            <div class="card-subtitle" style="font-size: 1rem; line-height: 1.4;">{titulo2}</div>
+            <div class="card-subtitle" style="margin-top: 8px; opacity: 0.7;">📅 {due2 if due2 else 'Sem data'}</div>
+        </div>
+        """, unsafe_allow_html=True)
+else:
+    with col_div2:
+        st.markdown("""
+        <div class="card bg-gradient-blue">
+            <div class="card-title">✅ Google Tasks</div>
+            <div class="card-subtitle" style="font-size: 0.85rem;">Sem tarefas</div>
+            <div class="card-subtitle" style="opacity: 0.7;">ou aguardando config</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Notícia de uma ação da carteira
 with col_news:
@@ -501,4 +567,159 @@ for col, empresa in zip([col_ia1, col_ia2, col_ia3, col_ia4], EMPRESAS_IA):
             st.markdown(f"""
             <div class="card {empresa['cor']}" style="min-height: 140px;">
                 <div class="card-title">{empresa['emoji']} {empresa["nome"]}</div>
-             
+                <div class="card-subtitle">Sem notícias recentes</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+# 3. CLIMA
+st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
+c1, c2 = st.columns(2)
+
+w_quiri = get_weather(-18.4486, -50.4519)
+w_coru = get_weather(-10.1264, -36.1756)
+
+with c1:
+    precip_txt = f" • 💧 {w_quiri['precipitacao']}mm" if w_quiri['precipitacao'] > 0 else ""
+    st.markdown(f"""
+    <div class="card bg-gradient-blue">
+        <div class="card-title">📍 Quirinópolis - GO</div>
+        <div class="card-value">{w_quiri['icon']} {w_quiri['temp']}°C</div>
+        <div class="card-subtitle">{w_quiri['descricao']}{precip_txt}</div>
+        <div class="card-subtitle">💨 {w_quiri['wind']} km/h • 💧 {w_quiri['humidity']}%</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c2:
+    precip_txt = f" • 💧 {w_coru['precipitacao']}mm" if w_coru['precipitacao'] > 0 else ""
+    st.markdown(f"""
+    <div class="card bg-gradient-green">
+        <div class="card-title">🌊 Coruripe - AL</div>
+        <div class="card-value">{w_coru['icon']} {w_coru['temp']}°C</div>
+        <div class="card-subtitle">{w_coru['descricao']}{precip_txt}</div>
+        <div class="card-subtitle">💨 {w_coru['wind']} km/h • 💧 {w_coru['humidity']}%</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 4. AÇÕES FAVORITAS
+st.markdown('<div class="section-header">📈 Ações em Destaque</div>', unsafe_allow_html=True)
+stocks = {
+    "PRIO3": "PRIO3.SA",
+    "BBAS3": "BBAS3.SA",
+    "MOVI3": "MOVI3.SA",
+    "VAMO3": "VAMO3.SA",
+    "AGRO3": "AGRO3.SA",
+    "DÓLAR": "USDBRL=X"
+}
+
+cols_s = st.columns(3)
+stocks_list = list(stocks.items())
+
+for i in range(3):
+    name, ticker = stocks_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
+    
+    with cols_s[i]:
+        prefix = "R$"
+        st.markdown(f"""
+        <div class="card bg-gradient-dark">
+            <div class="card-title">{name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">{prefix} {price:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+cols_s2 = st.columns(3)
+for i in range(3, 6):
+    name, ticker = stocks_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
+    
+    with cols_s2[i-3]:
+        prefix = "R$"
+        st.markdown(f"""
+        <div class="card bg-gradient-dark">
+            <div class="card-title">{name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">{prefix} {price:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# 5. NOTÍCIAS
+st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
+n1, n2 = st.columns(2)
+
+with n1:
+    st.markdown("**🌴 Coruripe & Região**")
+    news_al = get_news("Coruripe Alagoas")
+    if news_al:
+        for item in news_al:
+            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
+    else:
+        st.info("Sem notícias recentes.")
+
+with n2:
+    st.markdown("**📍 Quirinópolis & Goiás**")
+    news_go = get_news("Quirinópolis Goiás")
+    if news_go:
+        for item in news_go:
+            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
+    else:
+        st.info("Sem notícias recentes.")
+
+if st.button("🔄 Atualizar Tudo"):
+    st.cache_data.clear()
+    st.rerun()
+
+# 6. CARTEIRA CONSOLIDADA (no final)
+st.markdown('<div class="section-header">💰 Minha Carteira</div>', unsafe_allow_html=True)
+
+# Buscar dados
+dolar = get_dolar()
+var_br, patrim_br, lucro_br = calcular_variacao_carteira_br()
+var_us, patrim_us, lucro_us = calcular_variacao_carteira_us()
+
+# Converter US para BRL
+var_us_brl = var_us * dolar
+patrim_us_brl = patrim_us * dolar
+lucro_us_brl = lucro_us * dolar
+
+# Totais
+var_total_brl = var_br + var_us_brl
+patrim_total = patrim_br + patrim_us_brl
+lucro_total = lucro_br + lucro_us_brl
+
+# Cores baseadas no resultado
+cor_var = "bg-gradient-green" if var_total_brl >= 0 else "bg-gradient-red"
+cor_lucro = "bg-gradient-green" if lucro_total >= 0 else "bg-gradient-red"
+symbol_var = "▲" if var_total_brl >= 0 else "▼"
+symbol_lucro = "▲" if lucro_total >= 0 else "▼"
+
+col_c1, col_c2, col_c3 = st.columns(3)
+
+with col_c1:
+    st.markdown(f"""
+    <div class="card {cor_var}">
+        <div class="card-title">📊 Variação Hoje</div>
+        <div class="card-value">{symbol_var} R$ {abs(var_total_brl):,.2f}</div>
+        <div class="card-subtitle">BR: R$ {var_br:+,.2f} | US: R$ {var_us_brl:+,.2f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_c2:
+    st.markdown(f"""
+    <div class="card {cor_lucro}">
+        <div class="card-title">💎 Lucro vs PM</div>
+        <div class="card-value">{symbol_lucro} R$ {abs(lucro_total):,.2f}</div>
+        <div class="card-subtitle">BR: R$ {lucro_br:+,.2f} | US: R$ {lucro_us_brl:+,.2f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_c3:
+    st.markdown(f"""
+    <div class="card bg-gradient-gold">
+        <div class="card-title">💵 Dólar</div>
+        <div class="card-value">R$ {dolar:.4f}</div>
+        <div class="card-subtitle">Cotação atual</div>
+    </div>
+    """, unsafe_allow_html=True)
