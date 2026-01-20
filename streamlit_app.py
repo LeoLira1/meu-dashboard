@@ -5,6 +5,14 @@ import feedparser
 from datetime import datetime, timedelta
 from urllib.parse import quote
 import random
+import os.path
+import pickle
+
+# --- BIBLIOTECAS GOOGLE TASKS ---
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 
 # Configuração da página
 st.set_page_config(
@@ -44,19 +52,27 @@ st.markdown("""
     .card-value { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.2rem; }
     .card-subtitle { font-size: 0.8rem; opacity: 0.9; font-weight: 500; }
     
-    /* Variação de Ações (Badge flutuante para contraste) */
+    /* Tarefas */
+    .task-row {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border-left: 4px solid #4A00E0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    /* Variação de Ações */
     .stock-badge {
         padding: 2px 8px;
         border-radius: 10px;
         font-size: 0.8rem;
         margin-left: 10px;
     }
-    .stock-badge-positive {
-        background: rgba(17, 153, 142, 0.8);
-    }
-    .stock-badge-negative {
-        background: rgba(255, 81, 47, 0.8);
-    }
+    .stock-badge-positive { background: rgba(17, 153, 142, 0.8); }
+    .stock-badge-negative { background: rgba(255, 81, 47, 0.8); }
     
     /* Notícias */
     .news-card {
@@ -132,9 +148,40 @@ CARTEIRA_US = {
     "INTR": (0.77762, 6.43),
 }
 
+# --- FUNÇÕES GOOGLE TASKS ---
+SCOPES = ['https://www.googleapis.com/auth/tasks']
+
+def get_tasks_service():
+    """Autentica e retorna o serviço do Google Tasks"""
+    creds = None
+    if os.path.exists('token.json'):
+        try:
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        except:
+            os.remove('token.json')
+            creds = None
+            
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            if os.path.exists('client_secret.json'):
+                try:
+                    flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
+                    creds = flow.run_local_server(port=0)
+                except Exception as e:
+                    st.error(f"Erro na autenticação: {e}")
+                    return None
+            else:
+                return None
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    return build('tasks', 'v1', credentials=creds)
+
 # --- FUNÇÕES COM CACHE (PERFORMANCE) ---
 
-@st.cache_data(ttl=900)  # Atualiza a cada 15 min para clima mais preciso
+@st.cache_data(ttl=900)
 def get_weather(lat, lon):
     try:
         url = "https://api.open-meteo.com/v1/forecast"
@@ -147,40 +194,16 @@ def get_weather(lat, lon):
         response = requests.get(url, params=params, timeout=5)
         data = response.json().get("current", {})
         
-        # Mapeamento de códigos WMO para Emojis e descrição
         code = data.get("weather_code", 0)
-        
-        # Códigos WMO mais detalhados
         weather_map = {
-            0: ("☀️", "Céu limpo"),
-            1: ("🌤️", "Parcialmente limpo"),
-            2: ("⛅", "Parcialmente nublado"),
-            3: ("☁️", "Nublado"),
-            45: ("🌫️", "Neblina"),
-            48: ("🌫️", "Neblina com geada"),
-            51: ("🌦️", "Chuvisco leve"),
-            53: ("🌦️", "Chuvisco"),
-            55: ("🌧️", "Chuvisco forte"),
-            61: ("🌧️", "Chuva leve"),
-            63: ("🌧️", "Chuva moderada"),
-            65: ("🌧️", "Chuva forte"),
-            66: ("🌧️", "Chuva congelante"),
-            67: ("🌧️", "Chuva congelante forte"),
-            71: ("🌨️", "Neve leve"),
-            73: ("🌨️", "Neve"),
-            75: ("❄️", "Neve forte"),
-            80: ("🌦️", "Pancadas leves"),
-            81: ("🌧️", "Pancadas"),
-            82: ("⛈️", "Pancadas fortes"),
-            85: ("🌨️", "Pancadas de neve"),
-            86: ("❄️", "Nevasca"),
-            95: ("⛈️", "Tempestade"),
-            96: ("⛈️", "Tempestade com granizo"),
-            99: ("⛈️", "Tempestade severa"),
+            0: ("☀️", "Céu limpo"), 1: ("🌤️", "Parcialmente limpo"), 2: ("⛅", "Parcialmente nublado"),
+            3: ("☁️", "Nublado"), 45: ("🌫️", "Neblina"), 48: ("🌫️", "Neblina/geada"),
+            51: ("🌦️", "Chuvisco leve"), 53: ("🌦️", "Chuvisco"), 55: ("🌧️", "Chuvisco forte"),
+            61: ("🌧️", "Chuva leve"), 63: ("🌧️", "Chuva moderada"), 65: ("🌧️", "Chuva forte"),
+            80: ("🌦️", "Pancadas leves"), 81: ("🌧️", "Pancadas"), 82: ("⛈️", "Pancadas fortes"),
+            95: ("⛈️", "Tempestade"), 96: ("⛈️", "Tempestade/granizo"), 99: ("⛈️", "Tempestade severa"),
         }
-        
-        icon, descricao = weather_map.get(code, ("❓", "Indisponível"))
-        precipitacao = data.get("precipitation", 0)
+        icon, descricao = weather_map.get(code, ("☁️", "Nublado"))
         
         return {
             "temp": data.get("temperature_2m", "--"),
@@ -188,7 +211,7 @@ def get_weather(lat, lon):
             "humidity": data.get("relative_humidity_2m", "--"),
             "icon": icon,
             "descricao": descricao,
-            "precipitacao": precipitacao
+            "precipitacao": data.get("precipitation", 0)
         }
     except:
         return {"temp": "--", "wind": "--", "humidity": "--", "icon": "❓", "descricao": "Erro", "precipitacao": 0}
@@ -209,23 +232,20 @@ def get_stock_data(ticker):
 
 @st.cache_data(ttl=900)
 def get_dolar():
-    """Retorna cotação do dólar"""
     try:
         ticker = yf.Ticker("USDBRL=X")
         hist = ticker.history(period="1d")
         if len(hist) >= 1:
             return hist['Close'].iloc[-1]
-        return 6.0  # fallback
+        return 6.0
     except:
         return 6.0
 
 @st.cache_data(ttl=900)
 def calcular_variacao_carteira_br():
-    """Calcula variação diária da carteira BR em R$"""
     variacao_total = 0.0
     patrimonio_atual = 0.0
     custo_total = 0.0
-    
     for ticker, (qtd, pm) in CARTEIRA_BR.items():
         try:
             acao = yf.Ticker(ticker)
@@ -233,29 +253,17 @@ def calcular_variacao_carteira_br():
             if len(hist) >= 1:
                 preco_atual = hist['Close'].iloc[-1]
                 preco_anterior = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual
-                
-                # Variação do dia em R$
-                variacao_dia = (preco_atual - preco_anterior) * qtd
-                variacao_total += variacao_dia
-                
-                # Patrimônio atual
+                variacao_total += (preco_atual - preco_anterior) * qtd
                 patrimonio_atual += preco_atual * qtd
                 custo_total += pm * qtd
-        except:
-            continue
-    
-    # Lucro/Prejuízo total vs PM
-    lucro_total = patrimonio_atual - custo_total
-    
-    return variacao_total, patrimonio_atual, lucro_total
+        except: continue
+    return variacao_total, patrimonio_atual, patrimonio_atual - custo_total
 
 @st.cache_data(ttl=900)
 def calcular_variacao_carteira_us():
-    """Calcula variação diária da carteira US em US$"""
     variacao_total = 0.0
     patrimonio_atual = 0.0
     custo_total = 0.0
-    
     for ticker, (qtd, pm) in CARTEIRA_US.items():
         try:
             acao = yf.Ticker(ticker)
@@ -263,60 +271,38 @@ def calcular_variacao_carteira_us():
             if len(hist) >= 1:
                 preco_atual = hist['Close'].iloc[-1]
                 preco_anterior = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual
-                
-                variacao_dia = (preco_atual - preco_anterior) * qtd
-                variacao_total += variacao_dia
-                
+                variacao_total += (preco_atual - preco_anterior) * qtd
                 patrimonio_atual += preco_atual * qtd
                 custo_total += pm * qtd
-        except:
-            continue
-    
-    lucro_total = patrimonio_atual - custo_total
-    
-    return variacao_total, patrimonio_atual, lucro_total
+        except: continue
+    return variacao_total, patrimonio_atual, patrimonio_atual - custo_total
 
 @st.cache_data(ttl=1800)
 def get_news(query):
     try:
         query_encoded = quote(query)
         url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        feed = feedparser.parse(response.content)
+        feed = feedparser.parse(url)
         return feed.entries[:4]
-        
-    except requests.RequestException:
-        try:
-            query_encoded = quote(query)
-            url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-            feed = feedparser.parse(
-                url,
-                agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            )
-            return feed.entries[:4]
-        except:
-            return []
-    except:
-        return []
+    except: return []
+
+@st.cache_data(ttl=900)
+def get_ai_news(empresa, query):
+    try:
+        query_encoded = quote(query)
+        url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        feed = feedparser.parse(url)
+        if feed.entries: return feed.entries[0]
+        return None
+    except: return None
 
 # --- LÓGICA DO DASHBOARD ---
 
-# Ajuste de fuso horário para Brasília
 import pytz
 fuso_brasilia = pytz.timezone('America/Sao_Paulo')
 agora = datetime.now(fuso_brasilia)
 
-# Header compacto com cards úteis
 col_hora, col_div1, col_div2, col_news = st.columns(4)
-
-# Card de Hora Atual
 dia_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][agora.weekday()]
 
 with col_hora:
@@ -328,22 +314,7 @@ with col_hora:
     </div>
     """, unsafe_allow_html=True)
 
-# Função para buscar notícias das ações
-@st.cache_data(ttl=1800)
-def get_stock_news(query):
-    try:
-        query_encoded = quote(query)
-        url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(url, headers=headers, timeout=10)
-        feed = feedparser.parse(response.content)
-        if feed.entries:
-            return feed.entries[0]
-        return None
-    except:
-        return None
-
-# Dividendos / Proventos (dados aproximados - idealmente conectar a uma API)
+# Dividendos
 DIVIDENDOS = [
     {"acao": "BBAS3", "tipo": "JCP", "valor": "R$ 0,47", "data": "31/01", "cor": "bg-gradient-blue"},
     {"acao": "VALE3", "tipo": "Dividendo", "valor": "R$ 2,09", "data": "12/03", "cor": "bg-gradient-green"},
@@ -351,8 +322,6 @@ DIVIDENDOS = [
     {"acao": "BBSE3", "tipo": "Dividendo", "valor": "R$ 0,89", "data": "28/02", "cor": "bg-gradient-purple"},
     {"acao": "ITUB4", "tipo": "JCP", "valor": "R$ 0,32", "data": "01/02", "cor": "bg-gradient-orange"},
 ]
-
-# Selecionar 2 dividendos aleatórios para mostrar
 divs_mostrar = random.sample(DIVIDENDOS, 2)
 
 with col_div1:
@@ -375,285 +344,183 @@ with col_div2:
     </div>
     """, unsafe_allow_html=True)
 
-# Notícia de uma ação da carteira
 with col_news:
-    acoes_news = ["PRIO3 petróleo", "VALE3 mineração", "BBAS3 banco", "AGRO3 agronegócio"]
-    acao_escolhida = random.choice(acoes_news)
-    noticia = get_stock_news(acao_escolhida)
-    
-    if noticia:
-        titulo = noticia.title[:50] + "..." if len(noticia.title) > 50 else noticia.title
-        st.markdown(f"""
-        <a href="{noticia.link}" target="_blank" style="text-decoration: none;">
-            <div class="card bg-gradient-red" style="cursor: pointer;">
-                <div class="card-title">📰 {acao_escolhida.split()[0]}</div>
-                <div class="card-subtitle" style="font-size: 0.9rem; line-height: 1.3;">{titulo}</div>
-                <div class="card-subtitle" style="margin-top: 5px; opacity: 0.7;">Clique para ler</div>
-            </div>
-        </a>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class="card bg-gradient-red">
-            <div class="card-title">📰 Notícias</div>
-            <div class="card-subtitle">Sem notícias no momento</div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="card bg-gradient-red">
+        <div class="card-title">📰 Info</div>
+        <div class="card-subtitle">Painel Pessoal</div>
+        <div class="card-subtitle" style="margin-top: 5px;">Atualizado: {agora.strftime("%H:%M")}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- 0. GOOGLE TASKS (NOVO) ---
+st.markdown('<div class="section-header">📝 Minhas Tarefas (Google Tasks)</div>', unsafe_allow_html=True)
+
+col_tasks_main, col_tasks_add = st.columns([2, 1])
+
+# Inicializa serviço
+service = get_tasks_service()
+
+if service:
+    # Adicionar tarefa
+    with col_tasks_add:
+        with st.form("nova_tarefa"):
+            st.markdown("**Nova Tarefa**")
+            titulo_task = st.text_input("Título", placeholder="Ex: Comprar ração")
+            submit_task = st.form_submit_button("Adicionar")
+            if submit_task and titulo_task:
+                try:
+                    service.tasks().insert(tasklist='@default', body={'title': titulo_task}).execute()
+                    st.success("Adicionada!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+
+    # Listar tarefas
+    with col_tasks_main:
+        try:
+            results = service.tasks().list(tasklist='@default', showCompleted=False, maxResults=10).execute()
+            items = results.get('items', [])
+            
+            if not items:
+                st.info("Nenhuma tarefa pendente! 🎉")
+            else:
+                for item in items:
+                    c1, c2 = st.columns([0.1, 0.9])
+                    with c1:
+                        # Botão para concluir
+                        if st.button("✅", key=item['id'], help="Concluir tarefa"):
+                            # Marca como concluída (update status)
+                            item['status'] = 'completed'
+                            service.tasks().update(tasklist='@default', task=item['id'], body=item).execute()
+                            st.rerun()
+                    with c2:
+                        st.markdown(f"<div style='padding-top: 5px; font-size: 1.1rem;'>{item['title']}</div>", unsafe_allow_html=True)
+                        
+        except Exception as e:
+            st.error(f"Erro ao carregar tarefas: {e}")
+else:
+    st.warning("⚠️ Configure o arquivo 'client_secret.json' na pasta do projeto para ativar o Google Tasks.")
+
 
 # 1. FILMES & SÉRIES
 st.markdown('<div class="section-header">🎬 Filmes & Séries</div>', unsafe_allow_html=True)
-
-# Lista de indicações (filmes e séries com nota e gênero)
 INDICACOES = [
-    {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video"},
-    {"titulo": "Se7en", "tipo": "Filme", "genero": "Suspense/Crime", "nota": "8.6", "onde": "Netflix"},
-    {"titulo": "Interestelar", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.7", "onde": "Prime Video"},
-    {"titulo": "O Poço", "tipo": "Filme", "genero": "Terror/Suspense", "nota": "7.0", "onde": "Netflix"},
-    {"titulo": "Clube da Luta", "tipo": "Filme", "genero": "Drama/Suspense", "nota": "8.8", "onde": "Star+"},
-    {"titulo": "Parasita", "tipo": "Filme", "genero": "Suspense/Drama", "nota": "8.5", "onde": "Prime Video"},
-    {"titulo": "A Origem", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "HBO Max"},
-    {"titulo": "O Jogo da Imitação", "tipo": "Filme", "genero": "Drama/Biografia", "nota": "8.0", "onde": "Netflix"},
-    {"titulo": "Duna: Parte 2", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "Max"},
-    {"titulo": "Whiplash", "tipo": "Filme", "genero": "Drama/Musical", "nota": "8.5", "onde": "Prime Video"},
-    {"titulo": "Breaking Bad", "tipo": "Série", "genero": "Drama/Crime", "nota": "9.5", "onde": "Netflix"},
-    {"titulo": "Succession", "tipo": "Série", "genero": "Drama", "nota": "8.9", "onde": "Max"},
-    {"titulo": "Dark", "tipo": "Série", "genero": "Ficção Científica", "nota": "8.7", "onde": "Netflix"},
-    {"titulo": "Severance", "tipo": "Série", "genero": "Suspense/Ficção", "nota": "8.7", "onde": "Apple TV+"},
-    {"titulo": "The Bear", "tipo": "Série", "genero": "Drama/Comédia", "nota": "8.6", "onde": "Star+"},
-    {"titulo": "Shogun", "tipo": "Série", "genero": "Drama/Histórico", "nota": "8.7", "onde": "Star+"},
-    {"titulo": "True Detective S1", "tipo": "Série", "genero": "Crime/Drama", "nota": "9.0", "onde": "Max"},
-    {"titulo": "Chernobyl", "tipo": "Série", "genero": "Drama/Histórico", "nota": "9.4", "onde": "Max"},
-    {"titulo": "The Last of Us", "tipo": "Série", "genero": "Drama/Ação", "nota": "8.8", "onde": "Max"},
-    {"titulo": "Bem-vindos ao Derry", "tipo": "Série", "genero": "Terror", "nota": "8.1", "onde": "Max"},
+    {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama", "nota": "9.0", "onde": "Prime"},
+    {"titulo": "Interestelar", "tipo": "Filme", "genero": "Sci-Fi", "nota": "8.7", "onde": "Prime"},
+    {"titulo": "Ruptura (Severance)", "tipo": "Série", "genero": "Sci-Fi", "nota": "8.7", "onde": "Apple TV+"},
+    {"titulo": "Silo", "tipo": "Série", "genero": "Sci-Fi", "nota": "8.1", "onde": "Apple TV+"},
+    {"titulo": "Blade Runner 2049", "tipo": "Filme", "genero": "Sci-Fi", "nota": "8.0", "onde": "Netflix"},
+    {"titulo": "Shogun", "tipo": "Série", "genero": "Drama", "nota": "8.7", "onde": "Disney+"},
 ]
-
-# Selecionar 3 indicações aleatórias
+# Seleção aleatória garantindo diversidade
 indicacoes_dia = random.sample(INDICACOES, 3)
-
-col_f1, col_f2, col_f3 = st.columns(3)
-
+cf1, cf2, cf3 = st.columns(3)
 cores_filmes = ["bg-gradient-purple", "bg-gradient-red", "bg-gradient-teal"]
 
-for i, (col, indicacao) in enumerate(zip([col_f1, col_f2, col_f3], indicacoes_dia)):
-    emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
+for i, (col, ind) in enumerate(zip([cf1, cf2, cf3], indicacoes_dia)):
+    emoji = "🎬" if ind["tipo"] == "Filme" else "📺"
     with col:
         st.markdown(f"""
         <div class="card {cores_filmes[i]}">
-            <div class="card-title">{emoji} {indicacao["tipo"]} • ⭐ {indicacao["nota"]}</div>
-            <div class="card-value" style="font-size: 1.3rem">{indicacao["titulo"]}</div>
-            <div class="card-subtitle">{indicacao["genero"]} • {indicacao["onde"]}</div>
+            <div class="card-title">{emoji} {ind["tipo"]} • ⭐ {ind["nota"]}</div>
+            <div class="card-value" style="font-size: 1.3rem">{ind["titulo"]}</div>
+            <div class="card-subtitle">{ind["genero"]} • {ind["onde"]}</div>
         </div>
         """, unsafe_allow_html=True)
 
 # 2. IA & TECH
 st.markdown('<div class="section-header">🤖 IA & Tech</div>', unsafe_allow_html=True)
-
-@st.cache_data(ttl=900)  # Atualiza a cada 15 min
-def get_ai_news(empresa, query):
-    """Busca notícias de empresas de IA"""
-    try:
-        query_encoded = quote(query)
-        url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        feed = feedparser.parse(response.content)
-        if feed.entries:
-            return feed.entries[0]  # Retorna a notícia mais recente
-        return None
-    except Exception as e:
-        return None
-
-# Empresas de IA para buscar notícias (queries mais específicas)
 EMPRESAS_IA = [
-    {"nome": "OpenAI", "query": "OpenAI GPT ChatGPT 2025", "emoji": "🟢", "cor": "bg-gradient-green"},
-    {"nome": "Claude", "query": "Anthropic Claude inteligência artificial", "emoji": "🟠", "cor": "bg-gradient-orange"},
-    {"nome": "Gemini", "query": "Google Gemini IA 2025", "emoji": "🔵", "cor": "bg-gradient-blue"},
-    {"nome": "DeepSeek", "query": "DeepSeek IA China", "emoji": "🟣", "cor": "bg-gradient-purple"},
+    {"nome": "OpenAI", "query": "OpenAI ChatGPT news", "emoji": "🟢", "cor": "bg-gradient-green"},
+    {"nome": "Claude", "query": "Anthropic Claude AI", "emoji": "🟠", "cor": "bg-gradient-orange"},
+    {"nome": "Gemini", "query": "Google Gemini AI updates", "emoji": "🔵", "cor": "bg-gradient-blue"},
+    {"nome": "DeepSeek", "query": "DeepSeek AI China", "emoji": "🟣", "cor": "bg-gradient-purple"},
 ]
-
-col_ia1, col_ia2, col_ia3, col_ia4 = st.columns(4)
-
-for col, empresa in zip([col_ia1, col_ia2, col_ia3, col_ia4], EMPRESAS_IA):
-    noticia = get_ai_news(empresa["nome"], empresa["query"])
-    
+cia1, cia2, cia3, cia4 = st.columns(4)
+for col, emp in zip([cia1, cia2, cia3, cia4], EMPRESAS_IA):
+    noticia = get_ai_news(emp["nome"], emp["query"])
     with col:
         if noticia:
-            # Limitar título a 60 caracteres
-            titulo = noticia.title[:60] + "..." if len(noticia.title) > 60 else noticia.title
-            link = noticia.link
-            
-            st.markdown(f"""
-            <a href="{link}" target="_blank" style="text-decoration: none;">
-                <div class="card {empresa['cor']}" style="cursor: pointer; min-height: 140px;">
-                    <div class="card-title">{empresa['emoji']} {empresa["nome"]}</div>
-                    <div class="card-subtitle" style="font-size: 0.95rem; line-height: 1.4;">{titulo}</div>
-                    <div class="card-subtitle" style="margin-top: 8px; opacity: 0.7;">📰 Clique para ler</div>
-                </div>
-            </a>
-            """, unsafe_allow_html=True)
+            tit = noticia.title[:50] + "..." if len(noticia.title)>50 else noticia.title
+            st.markdown(f"""<a href="{noticia.link}" target="_blank" style="text-decoration:none">
+            <div class="card {emp['cor']}" style="min-height:140px; cursor:pointer">
+                <div class="card-title">{emp['emoji']} {emp["nome"]}</div>
+                <div class="card-subtitle" style="line-height:1.2">{tit}</div>
+            </div></a>""", unsafe_allow_html=True)
         else:
-            st.markdown(f"""
-            <div class="card {empresa['cor']}" style="min-height: 140px;">
-                <div class="card-title">{empresa['emoji']} {empresa["nome"]}</div>
-                <div class="card-subtitle">Sem notícias recentes</div>
-            </div>
-            """, unsafe_allow_html=True)
+             st.markdown(f"""<div class="card {emp['cor']}" style="min-height:140px">
+                <div class="card-title">{emp['emoji']} {emp["nome"]}</div>
+                <div class="card-subtitle">Sem news</div>
+            </div>""", unsafe_allow_html=True)
 
 # 3. CLIMA
 st.markdown('<div class="section-header">🌤️ Clima na Região</div>', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
-
-w_quiri = get_weather(-18.4486, -50.4519)
-w_coru = get_weather(-10.1264, -36.1756)
+w_quiri = get_weather(-18.4486, -50.4519) # Quirinópolis
+w_coru = get_weather(-10.1264, -36.1756)  # Coruripe
 
 with c1:
-    precip_txt = f" • 💧 {w_quiri['precipitacao']}mm" if w_quiri['precipitacao'] > 0 else ""
+    p_txt = f" • 💧 {w_quiri['precipitacao']}mm" if w_quiri['precipitacao'] > 0 else ""
     st.markdown(f"""
     <div class="card bg-gradient-blue">
         <div class="card-title">📍 Quirinópolis - GO</div>
         <div class="card-value">{w_quiri['icon']} {w_quiri['temp']}°C</div>
-        <div class="card-subtitle">{w_quiri['descricao']}{precip_txt}</div>
-        <div class="card-subtitle">💨 {w_quiri['wind']} km/h • 💧 {w_quiri['humidity']}%</div>
-    </div>
-    """, unsafe_allow_html=True)
+        <div class="card-subtitle">{w_quiri['descricao']} • 💨 {w_quiri['wind']}km/h{p_txt}</div>
+    </div>""", unsafe_allow_html=True)
 
 with c2:
-    precip_txt = f" • 💧 {w_coru['precipitacao']}mm" if w_coru['precipitacao'] > 0 else ""
+    p_txt = f" • 💧 {w_coru['precipitacao']}mm" if w_coru['precipitacao'] > 0 else ""
     st.markdown(f"""
     <div class="card bg-gradient-green">
         <div class="card-title">🌊 Coruripe - AL</div>
         <div class="card-value">{w_coru['icon']} {w_coru['temp']}°C</div>
-        <div class="card-subtitle">{w_coru['descricao']}{precip_txt}</div>
-        <div class="card-subtitle">💨 {w_coru['wind']} km/h • 💧 {w_coru['humidity']}%</div>
-    </div>
-    """, unsafe_allow_html=True)
+        <div class="card-subtitle">{w_coru['descricao']} • 💨 {w_coru['wind']}km/h{p_txt}</div>
+    </div>""", unsafe_allow_html=True)
 
 # 4. AÇÕES FAVORITAS
 st.markdown('<div class="section-header">📈 Ações em Destaque</div>', unsafe_allow_html=True)
-stocks = {
-    "PRIO3": "PRIO3.SA",
-    "BBAS3": "BBAS3.SA",
-    "MOVI3": "MOVI3.SA",
-    "VAMO3": "VAMO3.SA",
-    "AGRO3": "AGRO3.SA",
-    "DÓLAR": "USDBRL=X"
-}
-
-cols_s = st.columns(3)
-stocks_list = list(stocks.items())
-
-for i in range(3):
-    name, ticker = stocks_list[i]
+stocks = list(CARTEIRA_BR.keys())[:3] + ["USDBRL=X"] # Simplificado para demo
+cols_s = st.columns(4)
+for i, ticker in enumerate(stocks):
     price, var = get_stock_data(ticker)
-    symbol = "▲" if var >= 0 else "▼"
-    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
-    
+    bg = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
+    sym = "▲" if var >= 0 else "▼"
     with cols_s[i]:
-        prefix = "R$"
         st.markdown(f"""
         <div class="card bg-gradient-dark">
-            <div class="card-title">{name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
-            <div class="card-value">{prefix} {price:.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
+            <div class="card-title">{ticker.split('.')[0]} <span class="stock-badge {bg}">{sym} {var:.1f}%</span></div>
+            <div class="card-value">R$ {price:.2f}</div>
+        </div>""", unsafe_allow_html=True)
 
-cols_s2 = st.columns(3)
-for i in range(3, 6):
-    name, ticker = stocks_list[i]
-    price, var = get_stock_data(ticker)
-    symbol = "▲" if var >= 0 else "▼"
-    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
-    
-    with cols_s2[i-3]:
-        prefix = "R$"
-        st.markdown(f"""
-        <div class="card bg-gradient-dark">
-            <div class="card-title">{name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
-            <div class="card-value">{prefix} {price:.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# 5. NOTÍCIAS
-st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
+# 5. NOTÍCIAS GERAIS
+st.markdown('<div class="section-header">📰 Notícias Locais</div>', unsafe_allow_html=True)
 n1, n2 = st.columns(2)
-
 with n1:
-    st.markdown("**🌴 Coruripe & Região**")
-    news_al = get_news("Coruripe Alagoas")
-    if news_al:
-        for item in news_al:
-            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
-    else:
-        st.info("Sem notícias recentes.")
-
+    st.markdown("**🌴 Coruripe**")
+    for item in get_news("Coruripe Alagoas"):
+        st.markdown(f'- [{item.title}]({item.link})')
 with n2:
-    st.markdown("**📍 Quirinópolis & Goiás**")
-    news_go = get_news("Quirinópolis Goiás")
-    if news_go:
-        for item in news_go:
-            st.markdown(f'<div class="news-card"><a href="{item.link}" target="_blank">{item.title}</a></div>', unsafe_allow_html=True)
-    else:
-        st.info("Sem notícias recentes.")
+    st.markdown("**📍 Quirinópolis**")
+    for item in get_news("Quirinópolis Goiás"):
+        st.markdown(f'- [{item.title}]({item.link})')
 
 if st.button("🔄 Atualizar Tudo"):
     st.cache_data.clear()
     st.rerun()
 
-# 6. CARTEIRA CONSOLIDADA (no final)
-st.markdown('<div class="section-header">💰 Minha Carteira</div>', unsafe_allow_html=True)
-
-# Buscar dados
+# 6. CARTEIRA TOTAL
+st.markdown('<div class="section-header">💰 Resumo Financeiro</div>', unsafe_allow_html=True)
 dolar = get_dolar()
-var_br, patrim_br, lucro_br = calcular_variacao_carteira_br()
-var_us, patrim_us, lucro_us = calcular_variacao_carteira_us()
+v_br, p_br, l_br = calcular_variacao_carteira_br()
+v_us, p_us, l_us = calcular_variacao_carteira_us()
 
-# Converter US para BRL
-var_us_brl = var_us * dolar
-patrim_us_brl = patrim_us * dolar
-lucro_us_brl = lucro_us * dolar
+total_patrim = p_br + (p_us * dolar)
+total_lucro = l_br + (l_us * dolar)
+cor_lucro = "bg-gradient-green" if total_lucro >= 0 else "bg-gradient-red"
 
-# Totais
-var_total_brl = var_br + var_us_brl
-patrim_total = patrim_br + patrim_us_brl
-lucro_total = lucro_br + lucro_us_brl
-
-# Cores baseadas no resultado
-cor_var = "bg-gradient-green" if var_total_brl >= 0 else "bg-gradient-red"
-cor_lucro = "bg-gradient-green" if lucro_total >= 0 else "bg-gradient-red"
-symbol_var = "▲" if var_total_brl >= 0 else "▼"
-symbol_lucro = "▲" if lucro_total >= 0 else "▼"
-
-col_c1, col_c2, col_c3 = st.columns(3)
-
-with col_c1:
-    st.markdown(f"""
-    <div class="card {cor_var}">
-        <div class="card-title">📊 Variação Hoje</div>
-        <div class="card-value">{symbol_var} R$ {abs(var_total_brl):,.2f}</div>
-        <div class="card-subtitle">BR: R$ {var_br:+,.2f} | US: R$ {var_us_brl:+,.2f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col_c2:
-    st.markdown(f"""
-    <div class="card {cor_lucro}">
-        <div class="card-title">💎 Lucro vs PM</div>
-        <div class="card-value">{symbol_lucro} R$ {abs(lucro_total):,.2f}</div>
-        <div class="card-subtitle">BR: R$ {lucro_br:+,.2f} | US: R$ {lucro_us_brl:+,.2f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col_c3:
-    st.markdown(f"""
-    <div class="card bg-gradient-gold">
-        <div class="card-title">💵 Dólar</div>
-        <div class="card-value">R$ {dolar:.4f}</div>
-        <div class="card-subtitle">Cotação atual</div>
-    </div>
-    """, unsafe_allow_html=True)
+cc1, cc2 = st.columns(2)
+with cc1:
+    st.markdown(f"""<div class="card bg-gradient-gold"><div class="card-title">💵 Dólar</div><div class="card-value">R$ {dolar:.3f}</div></div>""", unsafe_allow_html=True)
+with cc2:
+    st.markdown(f"""<div class="card {cor_lucro}"><div class="card-title">💎 Lucro Total Estimado</div><div class="card-value">R$ {total_lucro:,.2f}</div><div class="card-subtitle">Patrimônio: R$ {total_patrim:,.2f}</div></div>""", unsafe_allow_html=True)
