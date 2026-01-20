@@ -50,12 +50,15 @@ st.markdown("""
         border-radius: 10px;
         font-size: 0.8rem;
         margin-left: 10px;
+        font-weight: 600;
     }
     .stock-badge-positive {
-        background: rgba(17, 153, 142, 0.8);
+        background: #00C853;
+        color: white;
     }
     .stock-badge-negative {
-        background: rgba(255, 81, 47, 0.8);
+        background: #FF1744;
+        color: white;
     }
     
     /* Notícias */
