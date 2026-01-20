@@ -75,7 +75,37 @@ st.markdown("""
     
     .section-header { font-size: 1.4rem; font-weight: 600; margin: 2rem 0 1rem 0; color: #444; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
     
-    /* Card especial com imagem de fundo para CAFÉ */
+    /* Cards especiais com imagens de fundo para commodities */
+    .card-soja-imagem {
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        background-image: linear-gradient(rgba(34, 139, 34, 0.6), rgba(0, 100, 0, 0.75)), 
+                          url('https://images.unsplash.com/photo-1595855759920-86582396756a?w=800');
+        background-size: cover;
+        background-position: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .card-soja-imagem:hover { transform: translateY(-2px); }
+    
+    .card-milho-imagem {
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        background-image: linear-gradient(rgba(255, 193, 7, 0.5), rgba(255, 152, 0, 0.7)), 
+                          url('https://images.unsplash.com/photo-1603569283847-aa295f0d016a?w=800');
+        background-size: cover;
+        background-position: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .card-milho-imagem:hover { transform: translateY(-2px); }
+    
     .card-cafe-imagem {
         border-radius: 16px;
         padding: 1.2rem;
@@ -83,13 +113,58 @@ st.markdown("""
         color: white;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         transition: transform 0.2s;
-        background-image: linear-gradient(rgba(101, 67, 33, 0.7), rgba(59, 38, 19, 0.8)), 
+        background-image: linear-gradient(rgba(101, 67, 33, 0.65), rgba(59, 38, 19, 0.8)), 
                           url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800');
         background-size: cover;
         background-position: center;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
     }
     .card-cafe-imagem:hover { transform: translateY(-2px); }
+    
+    .card-brent-imagem {
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(40, 40, 40, 0.75)), 
+                          url('https://images.unsplash.com/photo-1593431819579-a6e80c12877b?w=800');
+        background-size: cover;
+        background-position: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .card-brent-imagem:hover { transform: translateY(-2px); }
+    
+    .card-ouro-imagem {
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        background-image: linear-gradient(rgba(255, 215, 0, 0.3), rgba(218, 165, 32, 0.6)), 
+                          url('https://images.unsplash.com/photo-1610375461246-83df859d849d?w=800');
+        background-size: cover;
+        background-position: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+    }
+    .card-ouro-imagem:hover { transform: translateY(-2px); }
+    
+    .card-bitcoin-imagem {
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        background-image: linear-gradient(rgba(242, 169, 0, 0.5), rgba(255, 120, 0, 0.7)), 
+                          url('https://images.unsplash.com/photo-1518546305927-5a555bb7020d?w=800');
+        background-size: cover;
+        background-position: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    .card-bitcoin-imagem:hover { transform: translateY(-2px); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -660,24 +735,26 @@ for i in range(3):
     badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
     info = commodity_info[name]
     
+    # Mapear cada commodity para sua classe CSS com imagem
+    class_map = {
+        "SOJA": "card-soja-imagem",
+        "MILHO": "card-milho-imagem",
+        "CAFÉ": "card-cafe-imagem",
+        "BRENT": "card-brent-imagem",
+        "OURO": "card-ouro-imagem",
+        "BITCOIN": "card-bitcoin-imagem"
+    }
+    
+    card_class = class_map.get(name, info['cor'])
+    
     with cols_c[i]:
-        # Card especial com imagem para CAFÉ
-        if name == "CAFÉ":
-            st.markdown(f"""
-            <div class="card-cafe-imagem">
-                <div class="card-title">{info['emoji']} {name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
-                <div class="card-value">${price:,.2f}</div>
-                <div class="card-subtitle">{info['unit']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class="card {info['cor']}">
-                <div class="card-title">{info['emoji']} {name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
-                <div class="card-value">${price:,.2f}</div>
-                <div class="card-subtitle">{info['unit']}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="{card_class}">
+            <div class="card-title">{info['emoji']} {name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">${price:,.2f}</div>
+            <div class="card-subtitle">{info['unit']}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Segunda linha (3 commodities)
 cols_c2 = st.columns(3)
@@ -688,6 +765,18 @@ for i in range(3, 6):
     badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
     info = commodity_info[name]
     
+    # Mapear cada commodity para sua classe CSS com imagem
+    class_map = {
+        "SOJA": "card-soja-imagem",
+        "MILHO": "card-milho-imagem",
+        "CAFÉ": "card-cafe-imagem",
+        "BRENT": "card-brent-imagem",
+        "OURO": "card-ouro-imagem",
+        "BITCOIN": "card-bitcoin-imagem"
+    }
+    
+    card_class = class_map.get(name, info['cor'])
+    
     with cols_c2[i-3]:
         # Formatação especial para Bitcoin (valor mais alto)
         if name == "BITCOIN":
@@ -696,7 +785,7 @@ for i in range(3, 6):
             price_display = f"${price:,.2f}"
             
         st.markdown(f"""
-        <div class="card {info['cor']}">
+        <div class="{card_class}">
             <div class="card-title">{info['emoji']} {name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
             <div class="card-value">{price_display}</div>
             <div class="card-subtitle">{info['unit']}</div>
