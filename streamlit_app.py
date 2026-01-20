@@ -84,7 +84,7 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         transition: transform 0.2s;
         background-image: linear-gradient(rgba(34, 139, 34, 0.6), rgba(0, 100, 0, 0.75)), 
-                          url('https://images.unsplash.com/photo-1595855759920-86582396756a?w=800');
+                          url('https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=800');
         background-size: cover;
         background-position: center;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
@@ -99,7 +99,7 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         transition: transform 0.2s;
         background-image: linear-gradient(rgba(255, 193, 7, 0.5), rgba(255, 152, 0, 0.7)), 
-                          url('https://images.unsplash.com/photo-1603569283847-aa295f0d016a?w=800');
+                          url('https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800');
         background-size: cover;
         background-position: center;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
@@ -129,7 +129,7 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         transition: transform 0.2s;
         background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(40, 40, 40, 0.75)), 
-                          url('https://images.unsplash.com/photo-1593431819579-a6e80c12877b?w=800');
+                          url('https://images.unsplash.com/photo-1631865369560-73959ff13e7f?w=800');
         background-size: cover;
         background-position: center;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
