@@ -613,23 +613,23 @@ for i in range(3, 6):
 # 5. COMMODITIES
 st.markdown('<div class="section-header">🌾 Commodities & Ativos</div>', unsafe_allow_html=True)
 
-# Dicionário de commodities com tickers do Yahoo Finance
+# Dicionário de commodities com tickers mais confiáveis do Yahoo Finance
 commodities = {
-    "SOJA": "ZS=F",           # Soja Futuros
-    "MILHO": "ZC=F",          # Milho Futuros
-    "CAFÉ": "KC=F",           # Café Futuros
-    "BRENT": "BZ=F",          # Petróleo Brent
-    "OURO": "GC=F",           # Ouro Futuros
+    "SOJA": "SOYB",           # Teucrium Soybean Fund (ETF)
+    "MILHO": "CORN",          # Teucrium Corn Fund (ETF)
+    "CAFÉ": "JO",             # iPath Series B Bloomberg Coffee (ETN)
+    "BRENT": "BNO",           # United States Brent Oil Fund (ETF)
+    "OURO": "GLD",            # SPDR Gold Trust (ETF)
     "BITCOIN": "BTC-USD"      # Bitcoin
 }
 
 # Símbolos e unidades para cada commodity
 commodity_info = {
-    "SOJA": {"emoji": "🌱", "unit": "USD/bu", "cor": "bg-gradient-green"},
-    "MILHO": {"emoji": "🌽", "unit": "USD/bu", "cor": "bg-gradient-gold"},
-    "CAFÉ": {"emoji": "☕", "unit": "USD/lb", "cor": "bg-gradient-orange"},
-    "BRENT": {"emoji": "🛢️", "unit": "USD/bbl", "cor": "bg-gradient-dark"},
-    "OURO": {"emoji": "💰", "unit": "USD/oz", "cor": "bg-gradient-gold"},
+    "SOJA": {"emoji": "🌱", "unit": "USD (ETF)", "cor": "bg-gradient-green"},
+    "MILHO": {"emoji": "🌽", "unit": "USD (ETF)", "cor": "bg-gradient-gold"},
+    "CAFÉ": {"emoji": "☕", "unit": "USD (ETN)", "cor": "bg-gradient-orange"},
+    "BRENT": {"emoji": "🛢️", "unit": "USD (ETF)", "cor": "bg-gradient-dark"},
+    "OURO": {"emoji": "💰", "unit": "USD (ETF)", "cor": "bg-gradient-gold"},
     "BITCOIN": {"emoji": "₿", "unit": "USD", "cor": "bg-gradient-orange"}
 }
 
