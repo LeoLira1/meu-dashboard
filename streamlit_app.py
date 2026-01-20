@@ -607,7 +607,74 @@ for i in range(3, 6):
         </div>
         """, unsafe_allow_html=True)
 
-# 5. NOTÍCIAS
+# 5. COMMODITIES
+st.markdown('<div class="section-header">🌾 Commodities & Ativos</div>', unsafe_allow_html=True)
+
+# Dicionário de commodities com tickers do Yahoo Finance
+commodities = {
+    "SOJA": "ZS=F",           # Soja Futuros
+    "MILHO": "ZC=F",          # Milho Futuros
+    "CAFÉ": "KC=F",           # Café Futuros
+    "BRENT": "BZ=F",          # Petróleo Brent
+    "OURO": "GC=F",           # Ouro Futuros
+    "BITCOIN": "BTC-USD"      # Bitcoin
+}
+
+# Símbolos e unidades para cada commodity
+commodity_info = {
+    "SOJA": {"emoji": "🌱", "unit": "USD/bu", "cor": "bg-gradient-green"},
+    "MILHO": {"emoji": "🌽", "unit": "USD/bu", "cor": "bg-gradient-gold"},
+    "CAFÉ": {"emoji": "☕", "unit": "USD/lb", "cor": "bg-gradient-orange"},
+    "BRENT": {"emoji": "🛢️", "unit": "USD/bbl", "cor": "bg-gradient-dark"},
+    "OURO": {"emoji": "💰", "unit": "USD/oz", "cor": "bg-gradient-gold"},
+    "BITCOIN": {"emoji": "₿", "unit": "USD", "cor": "bg-gradient-orange"}
+}
+
+cols_c = st.columns(3)
+commodities_list = list(commodities.items())
+
+# Primeira linha (3 commodities)
+for i in range(3):
+    name, ticker = commodities_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
+    info = commodity_info[name]
+    
+    with cols_c[i]:
+        st.markdown(f"""
+        <div class="card {info['cor']}">
+            <div class="card-title">{info['emoji']} {name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">${price:,.2f}</div>
+            <div class="card-subtitle">{info['unit']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Segunda linha (3 commodities)
+cols_c2 = st.columns(3)
+for i in range(3, 6):
+    name, ticker = commodities_list[i]
+    price, var = get_stock_data(ticker)
+    symbol = "▲" if var >= 0 else "▼"
+    badge_class = "stock-badge-positive" if var >= 0 else "stock-badge-negative"
+    info = commodity_info[name]
+    
+    with cols_c2[i-3]:
+        # Formatação especial para Bitcoin (valor mais alto)
+        if name == "BITCOIN":
+            price_display = f"${price:,.0f}"
+        else:
+            price_display = f"${price:,.2f}"
+            
+        st.markdown(f"""
+        <div class="card {info['cor']}">
+            <div class="card-title">{info['emoji']} {name} <span class="stock-badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div class="card-value">{price_display}</div>
+            <div class="card-subtitle">{info['unit']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# 6. NOTÍCIAS
 st.markdown('<div class="section-header">📰 Giro de Notícias</div>', unsafe_allow_html=True)
 n1, n2 = st.columns(2)
 
@@ -633,7 +700,7 @@ if st.button("🔄 Atualizar Tudo"):
     st.cache_data.clear()
     st.rerun()
 
-# 6. CARTEIRA CONSOLIDADA (no final)
+# 7. CARTEIRA CONSOLIDADA (no final)
 st.markdown('<div class="section-header">💰 Minha Carteira</div>', unsafe_allow_html=True)
 
 # Buscar dados
