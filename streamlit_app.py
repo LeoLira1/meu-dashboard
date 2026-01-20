@@ -448,7 +448,7 @@ for i, (col, indicacao) in enumerate(zip([col_f1, col_f2, col_f3], indicacoes_di
 # 2. IA & TECH
 st.markdown('<div class="section-header">🤖 IA & Tech</div>', unsafe_allow_html=True)
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=900)  # Atualiza a cada 15 min
 def get_ai_news(empresa, query):
     """Busca notícias de empresas de IA"""
     try:
@@ -466,15 +466,15 @@ def get_ai_news(empresa, query):
         if feed.entries:
             return feed.entries[0]  # Retorna a notícia mais recente
         return None
-    except:
+    except Exception as e:
         return None
 
-# Empresas de IA para buscar notícias
+# Empresas de IA para buscar notícias (queries mais específicas)
 EMPRESAS_IA = [
-    {"nome": "OpenAI", "query": "OpenAI ChatGPT GPT", "emoji": "🟢", "cor": "bg-gradient-green"},
-    {"nome": "Claude", "query": "Anthropic Claude AI", "emoji": "🟠", "cor": "bg-gradient-orange"},
-    {"nome": "Gemini", "query": "Google Gemini AI", "emoji": "🔵", "cor": "bg-gradient-blue"},
-    {"nome": "DeepSeek", "query": "DeepSeek AI", "emoji": "🟣", "cor": "bg-gradient-purple"},
+    {"nome": "OpenAI", "query": "OpenAI GPT ChatGPT 2025", "emoji": "🟢", "cor": "bg-gradient-green"},
+    {"nome": "Claude", "query": "Anthropic Claude inteligência artificial", "emoji": "🟠", "cor": "bg-gradient-orange"},
+    {"nome": "Gemini", "query": "Google Gemini IA 2025", "emoji": "🔵", "cor": "bg-gradient-blue"},
+    {"nome": "DeepSeek", "query": "DeepSeek IA China", "emoji": "🟣", "cor": "bg-gradient-purple"},
 ]
 
 col_ia1, col_ia2, col_ia3, col_ia4 = st.columns(4)
