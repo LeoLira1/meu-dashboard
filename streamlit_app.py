@@ -370,10 +370,15 @@ def calcular_variacao_carteira_us():
     
     return variacao_total, patrimonio_atual, lucro_total
 
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=600)  # Cache de 10 minutos
 def get_news(query):
     try:
-        query_encoded = quote(query)
+        # Adicionar filtro temporal para pegar notícias dos últimos 3 dias
+        from datetime import datetime, timedelta
+        data_limite = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        query_com_data = f"{query} after:{data_limite}"
+        
+        query_encoded = quote(query_com_data)
         url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
         
         headers = {
@@ -388,7 +393,7 @@ def get_news(query):
         
     except requests.RequestException:
         try:
-            query_encoded = quote(query)
+            query_encoded = quote(query_com_data)
             url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
             feed = feedparser.parse(
                 url,
@@ -423,10 +428,15 @@ with col_hora:
     """, unsafe_allow_html=True)
 
 # Função para buscar notícias das ações
-@st.cache_data(ttl=1800)
+@st.cache_data(ttl=600)  # Cache de 10 minutos para notícias mais frescas
 def get_stock_news(query):
     try:
-        query_encoded = quote(query)
+        # Adicionar filtro temporal para pegar notícias dos últimos 3 dias
+        from datetime import datetime, timedelta
+        data_limite = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        query_com_data = f"{query} after:{data_limite}"
+        
+        query_encoded = quote(query_com_data)
         url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         response = requests.get(url, headers=headers, timeout=10)
@@ -570,11 +580,16 @@ for i, (col, indicacao) in enumerate(zip([col_f1, col_f2, col_f3], indicacoes_di
 # 2. IA & TECH
 st.markdown('<div class="section-header">🤖 IA & Tech</div>', unsafe_allow_html=True)
 
-@st.cache_data(ttl=900)  # Atualiza a cada 15 min
+@st.cache_data(ttl=600)  # Cache de apenas 10 minutos para ter notícias mais recentes
 def get_ai_news(empresa, query):
     """Busca notícias de empresas de IA"""
     try:
-        query_encoded = quote(query)
+        # Adicionar filtro temporal para pegar notícias dos últimos 3 dias
+        from datetime import datetime, timedelta
+        data_limite = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        query_com_data = f"{query} after:{data_limite}"
+        
+        query_encoded = quote(query_com_data)
         url = f"https://news.google.com/rss/search?q={query_encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
         
         headers = {
@@ -591,12 +606,12 @@ def get_ai_news(empresa, query):
     except Exception as e:
         return None
 
-# Empresas de IA para buscar notícias (queries mais específicas)
+# Empresas de IA para buscar notícias (queries otimizadas)
 EMPRESAS_IA = [
-    {"nome": "OpenAI", "query": "OpenAI GPT ChatGPT 2025", "emoji": "🟢", "cor": "bg-gradient-green"},
-    {"nome": "Claude", "query": "Anthropic Claude inteligência artificial", "emoji": "🟠", "cor": "bg-gradient-orange"},
-    {"nome": "Gemini", "query": "Google Gemini IA 2025", "emoji": "🔵", "cor": "bg-gradient-blue"},
-    {"nome": "DeepSeek", "query": "DeepSeek IA China", "emoji": "🟣", "cor": "bg-gradient-purple"},
+    {"nome": "OpenAI", "query": "OpenAI ChatGPT", "emoji": "🟢", "cor": "bg-gradient-green"},
+    {"nome": "Claude", "query": "Anthropic Claude AI", "emoji": "🟠", "cor": "bg-gradient-orange"},
+    {"nome": "Gemini", "query": "Google Gemini", "emoji": "🔵", "cor": "bg-gradient-blue"},
+    {"nome": "DeepSeek", "query": "DeepSeek", "emoji": "🟣", "cor": "bg-gradient-purple"},
 ]
 
 col_ia1, col_ia2, col_ia3, col_ia4 = st.columns(4)
