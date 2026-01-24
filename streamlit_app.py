@@ -771,11 +771,14 @@ with col_c2:
     """, unsafe_allow_html=True)
 
 with col_c3:
+    ibov_price, ibov_var = get_stock_data("^BVSP")
+    ibov_badge = "badge-positive" if ibov_var >= 0 else "badge-negative"
+    ibov_symbol = "▲" if ibov_var >= 0 else "▼"
     st.markdown(f"""
     <div class="glass-card glass-purple">
-        <div class="card-label">🏦 Patrimônio Total</div>
-        <div class="card-value">R$ {patrim_total:,.0f}</div>
-        <div class="card-subtitle">BR: R$ {patrim_br:,.0f} · US: R$ {patrim_us_brl:,.0f}</div>
+        <div class="card-label">🇧🇷 Ibovespa</div>
+        <div class="card-value">{ibov_price:,.0f}</div>
+        <div><span class="badge {ibov_badge}">{ibov_symbol} {ibov_var:.2f}%</span></div>
     </div>
     """, unsafe_allow_html=True)
 
