@@ -847,11 +847,12 @@ with col_c3:
     ibov_price, ibov_var = get_stock_data("^BVSP")
     ibov_badge = "badge-positive" if ibov_var >= 0 else "badge-negative"
     ibov_symbol = "▲" if ibov_var >= 0 else "▼"
+    ibov_cor = "#a8e6cf" if ibov_var >= 0 else "#e6a8a8"
     st.markdown(f"""
     <div class="glass-card glass-purple">
         <div class="card-label">🇧🇷 Ibovespa</div>
         <div class="card-value">{ibov_price:,.0f}</div>
-        <div><span class="badge {ibov_badge}">{ibov_symbol} {ibov_var:.2f}%</span></div>
+        <div><span class="badge {ibov_badge}" style="color: {ibov_cor};">{ibov_symbol} {ibov_var:.2f}%</span></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -880,13 +881,14 @@ for i, (name, ticker) in enumerate(stocks.items()):
     price, var = get_stock_data(ticker)
     badge_class = "badge-positive" if var >= 0 else "badge-negative"
     symbol = "▲" if var >= 0 else "▼"
+    valor_cor = "#a8e6cf" if var >= 0 else "#e6a8a8"
     
     with cols[i]:
         st.markdown(f"""
         <div class="glass-card glass-dark">
             <div class="card-label">{name}</div>
             <div class="card-value card-value-sm">R$ {price:.2f}</div>
-            <div><span class="badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div><span class="badge {badge_class}" style="color: {valor_cor};">{symbol} {var:.1f}%</span></div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -908,6 +910,7 @@ for i, (name, (ticker, emoji)) in enumerate(commodities.items()):
     price, var = get_stock_data(ticker)
     badge_class = "badge-positive" if var >= 0 else "badge-negative"
     symbol = "▲" if var >= 0 else "▼"
+    valor_cor = "#a8e6cf" if var >= 0 else "#e6a8a8"
     
     price_display = f"${price:,.0f}" if name == "BITCOIN" else f"${price:.2f}"
     
@@ -916,7 +919,7 @@ for i, (name, (ticker, emoji)) in enumerate(commodities.items()):
         <div class="glass-card {glass_colors[i]}">
             <div class="card-label">{emoji} {name}</div>
             <div class="card-value card-value-sm">{price_display}</div>
-            <div><span class="badge {badge_class}">{symbol} {var:.1f}%</span></div>
+            <div><span class="badge {badge_class}" style="color: {valor_cor};">{symbol} {var:.1f}%</span></div>
         </div>
         """, unsafe_allow_html=True)
 
