@@ -645,8 +645,79 @@ def get_single_news(query):
     except:
         return None
 
-# --- DADOS ---
-INDICACOES = [
+# --- TMDB API CONFIG ---
+# Para usar a API do TMDB, crie uma conta em https://www.themoviedb.org/
+# e gere sua API key em https://www.themoviedb.org/settings/api
+# Depois cole sua chave abaixo:
+TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5NzhlZTAxMTg0NmZkNGEzODFlMjE5NzIxNDA3ZTcxMyIsIm5iZiI6MTc2OTI4NzY2NS41NDQsInN1YiI6IjY5NzUyZmYxMjBjYTQ5ZjZiOGFlMmYzOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5sSTiI-dCh5kfrqAFgGRLS4Ba-X_zv0twE6KnRDjf0g"  # Token de Leitura da API
+
+# Mapeamento de gêneros do TMDB
+TMDB_GENRES = {
+    28: "Ação", 12: "Aventura", 16: "Animação", 35: "Comédia", 80: "Crime",
+    99: "Documentário", 18: "Drama", 10751: "Família", 14: "Fantasia",
+    36: "História", 27: "Terror", 10402: "Música", 9648: "Mistério",
+    10749: "Romance", 878: "Ficção Científica", 10770: "Telefilme",
+    53: "Suspense", 10752: "Guerra", 37: "Faroeste",
+    10759: "Ação & Aventura", 10762: "Kids", 10763: "Notícias",
+    10764: "Reality", 10765: "Sci-Fi & Fantasia", 10766: "Novela",
+    10767: "Talk Show", 10768: "Guerra & Política"
+}
+
+@st.cache_data(ttl=3600)  # Cache de 1 hora
+def get_tmdb_trending():
+    """Busca filmes e séries em alta no TMDB"""
+    if not TMDB_API_KEY:
+        return None
+    
+    try:
+        headers = {
+            "accept": "application/json",
+            "Authorization": f"Bearer {TMDB_API_KEY}"
+        }
+        
+        resultados = []
+        
+        # Buscar filmes em alta
+        url_movies = "https://api.themoviedb.org/3/trending/movie/week?language=pt-BR"
+        response_movies = requests.get(url_movies, headers=headers, timeout=10)
+        
+        if response_movies.status_code == 200:
+            movies = response_movies.json().get("results", [])[:6]
+            for movie in movies:
+                generos = [TMDB_GENRES.get(g, "") for g in movie.get("genre_ids", [])[:2]]
+                genero_str = "/".join([g for g in generos if g]) or "Drama"
+                resultados.append({
+                    "titulo": movie.get("title", "Sem título"),
+                    "tipo": "Filme",
+                    "genero": genero_str,
+                    "nota": f"{movie.get('vote_average', 0):.1f}",
+                    "onde": "Em alta 🔥"
+                })
+        
+        # Buscar séries em alta
+        url_tv = "https://api.themoviedb.org/3/trending/tv/week?language=pt-BR"
+        response_tv = requests.get(url_tv, headers=headers, timeout=10)
+        
+        if response_tv.status_code == 200:
+            shows = response_tv.json().get("results", [])[:6]
+            for show in shows:
+                generos = [TMDB_GENRES.get(g, "") for g in show.get("genre_ids", [])[:2]]
+                genero_str = "/".join([g for g in generos if g]) or "Drama"
+                resultados.append({
+                    "titulo": show.get("name", "Sem título"),
+                    "tipo": "Série",
+                    "genero": genero_str,
+                    "nota": f"{show.get('vote_average', 0):.1f}",
+                    "onde": "Em alta 🔥"
+                })
+        
+        return resultados if resultados else None
+        
+    except Exception as e:
+        return None
+
+# Lista fallback caso a API não esteja configurada
+INDICACOES_FALLBACK = [
     {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video"},
     {"titulo": "Se7en", "tipo": "Filme", "genero": "Suspense/Crime", "nota": "8.6", "onde": "Netflix"},
     {"titulo": "Interestelar", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.7", "onde": "Prime Video"},
@@ -751,10 +822,11 @@ col_c1, col_c2, col_c3, col_c4 = st.columns(4)
 with col_c1:
     badge_class = "badge-positive" if var_total_brl >= 0 else "badge-negative"
     symbol = "▲" if var_total_brl >= 0 else "▼"
+    valor_cor = "#a8e6cf" if var_total_brl >= 0 else "#e6a8a8"
     st.markdown(f"""
     <div class="glass-card {'glass-green' if var_total_brl >= 0 else 'glass-rose'}">
         <div class="card-label">📊 Variação Hoje</div>
-        <div class="card-value">{symbol} R$ {abs(var_total_brl):,.0f}</div>
+        <div class="card-value" style="color: {valor_cor};">{symbol} R$ {abs(var_total_brl):,.0f}</div>
         <div class="card-subtitle">BR: R$ {var_br:+,.0f} · US: R$ {var_us_brl:+,.0f}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -762,10 +834,11 @@ with col_c1:
 with col_c2:
     badge_class = "badge-positive" if lucro_total >= 0 else "badge-negative"
     symbol = "▲" if lucro_total >= 0 else "▼"
+    valor_cor = "#a8e6cf" if lucro_total >= 0 else "#e6a8a8"
     st.markdown(f"""
     <div class="glass-card {'glass-green' if lucro_total >= 0 else 'glass-rose'}">
         <div class="card-label">💎 Lucro vs PM</div>
-        <div class="card-value">{symbol} R$ {abs(lucro_total):,.0f}</div>
+        <div class="card-value" style="color: {valor_cor};">{symbol} R$ {abs(lucro_total):,.0f}</div>
         <div class="card-subtitle">BR: R$ {lucro_br:+,.0f} · US: R$ {lucro_us_brl:+,.0f}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -883,9 +956,16 @@ for i, empresa in enumerate(EMPRESAS_IA):
 # SEÇÃO: FILMES & SÉRIES
 # ═══════════════════════════════════════════════════════════════
 
-st.markdown('<div class="section-title"><span class="section-icon">🎬</span> Filmes & Séries</div>', unsafe_allow_html=True)
+# Tentar buscar do TMDB, senão usar fallback
+tmdb_data = get_tmdb_trending()
+if tmdb_data:
+    indicacoes_dia = random.sample(tmdb_data, min(4, len(tmdb_data)))
+    section_subtitle = "Em alta esta semana"
+else:
+    indicacoes_dia = random.sample(INDICACOES_FALLBACK, 4)
+    section_subtitle = "Recomendações"
 
-indicacoes_dia = random.sample(INDICACOES, 4)
+st.markdown(f'<div class="section-title"><span class="section-icon">🎬</span> Filmes & Séries · <span style="font-weight: 400; font-size: 0.85rem; opacity: 0.7;">{section_subtitle}</span></div>', unsafe_allow_html=True)
 cols_f = st.columns(4)
 glass_media = ["glass-purple", "glass-rose", "glass-blue", "glass-dark"]
 
