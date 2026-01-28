@@ -646,8 +646,8 @@ def get_single_news(query):
         return None
 
 # --- TMDB API CONFIG ---
-# Para usar a API do TMDB, crie uma conta em https://www.themoviedb.org/ 
-# e gere sua API key em https://www.themoviedb.org/settings/api 
+# Para usar a API do TMDB, crie uma conta em https://www.themoviedb.org/
+# e gere sua API key em https://www.themoviedb.org/settings/api
 # Depois cole sua chave abaixo:
 TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5NzhlZTAxMTg0NmZkNGEzODFlMjE5NzIxNDA3ZTcxMyIsIm5iZiI6MTc2OTI4NzY2NS41NDQsInN1YiI6IjY5NzUyZmYxMjBjYTQ5ZjZiOGFlMmYzOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5sSTiI-dCh5kfrqAFgGRLS4Ba-X_zv0twE6KnRDjf0g"  # Token de Leitura da API
 
@@ -898,9 +898,8 @@ for i, (name, ticker) in enumerate(stocks.items()):
 
 st.markdown('<div class="section-title"><span class="section-icon">🌾</span> Commodities & Ativos</div>', unsafe_allow_html=True)
 
-# CORREÇÃO AQUI: Troquei "JO" por "KC=F" (Café Arábica - ICE Futures)
 commodities = {
-    "SOJA": ("SOYB", "🌱"), "MILHO": ("CORN", "🌽"), "CAFÉ": ("KC=F", "☕"),
+    "SOJA": ("SOYB", "🌱"), "MILHO": ("CORN", "🌽"), "CAFÉ": ("JO", "☕"),
     "BRENT": ("BNO", "🛢️"), "OURO": ("GLD", "💰"), "BITCOIN": ("BTC-USD", "₿")
 }
 
