@@ -432,6 +432,50 @@ st.markdown("""
         animation: shimmer 3s ease-in-out infinite;
     }
     
+    /* Card de previsão do tempo */
+    .forecast-card {
+        text-align: center;
+        min-height: 160px;
+    }
+    
+    .forecast-day {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 0.5rem;
+        text-transform: capitalize;
+    }
+    
+    .forecast-icon {
+        font-size: 2.5rem;
+        margin: 0.5rem 0;
+    }
+    
+    .forecast-temp {
+        font-family: 'Space Grotesk', sans-serif;
+    }
+    
+    .forecast-max {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.95);
+    }
+    
+    .forecast-min {
+        font-size: 1rem;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.5);
+        margin-left: 4px;
+    }
+    
+    .forecast-rain {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.75rem;
+        color: rgba(100, 180, 255, 0.8);
+        margin-top: 0.5rem;
+    }
+    
     /* Responsividade */
     @media (max-width: 768px) {
         .card-value { font-size: 1.6rem; }
@@ -543,6 +587,59 @@ def get_weather(lat, lon):
         }
     except:
         return {"temp": "--", "wind": "--", "humidity": "--", "icon": "❓", "descricao": "Erro", "precipitacao": 0}
+
+@st.cache_data(ttl=3600)
+def get_weather_forecast_5days(lat, lon):
+    """Busca previsão do tempo para os próximos 5 dias"""
+    try:
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum",
+            "timezone": "America/Sao_Paulo",
+            "forecast_days": 6  # Pega 6 dias (hoje + 5)
+        }
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json().get("daily", {})
+        
+        weather_map = {
+            0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
+            45: "🌫️", 48: "🌫️",
+            51: "🌦️", 53: "🌦️", 55: "🌧️",
+            61: "🌧️", 63: "🌧️", 65: "🌧️",
+            71: "🌨️", 73: "🌨️", 75: "❄️",
+            77: "🌨️", 80: "🌦️", 81: "🌧️", 82: "⛈️",
+            85: "🌨️", 86: "❄️", 95: "⛈️", 96: "⛈️", 99: "⛈️"
+        }
+        
+        dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+        forecast = []
+        
+        # Pula o primeiro dia (hoje) e pega os próximos 5
+        for i in range(1, 6):
+            if i < len(data.get("time", [])):
+                date_str = data["time"][i]
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                dia_semana = dias_semana[date_obj.weekday()]
+                dia_mes = date_obj.strftime("%d/%m")
+                
+                code = data.get("weather_code", [0])[i]
+                icon = weather_map.get(code, "❓")
+                
+                forecast.append({
+                    "dia": f"{dia_semana}",
+                    "data": dia_mes,
+                    "icon": icon,
+                    "max": round(data.get("temperature_2m_max", [0])[i]),
+                    "min": round(data.get("temperature_2m_min", [0])[i]),
+                    "chuva_prob": data.get("precipitation_probability_max", [0])[i],
+                    "chuva_mm": data.get("precipitation_sum", [0])[i]
+                })
+        
+        return forecast
+    except Exception as e:
+        return []
 
 @st.cache_data(ttl=900)
 def get_stock_data(ticker):
@@ -1012,6 +1109,40 @@ with col_n2:
             st.markdown(f'<div class="news-item"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# SEÇÃO: PREVISÃO 5 DIAS - QUIRINÓPOLIS
+# ═══════════════════════════════════════════════════════════════
+
+st.markdown('<div class="section-title"><span class="section-icon">🌤️</span> Previsão 5 Dias · <span style="font-weight: 400; font-size: 0.85rem; opacity: 0.7;">Quirinópolis, GO</span></div>', unsafe_allow_html=True)
+
+forecast_quiri = get_weather_forecast_5days(-18.4486, -50.4519)
+
+if forecast_quiri:
+    cols_forecast = st.columns(5)
+    glass_forecast = ["glass-blue", "glass-purple", "glass-green", "glass-rose", "glass-gold"]
+    
+    for i, dia in enumerate(forecast_quiri):
+        with cols_forecast[i]:
+            # Mostra probabilidade de chuva se > 20%
+            chuva_info = ""
+            if dia['chuva_prob'] > 20:
+                chuva_info = f'<div class="forecast-rain">💧 {dia["chuva_prob"]}%</div>'
+            
+            st.markdown(f"""
+            <div class="glass-card {glass_forecast[i]} forecast-card">
+                <div class="forecast-day">{dia['dia']}</div>
+                <div class="card-subtitle" style="font-size: 0.75rem;">{dia['data']}</div>
+                <div class="forecast-icon">{dia['icon']}</div>
+                <div class="forecast-temp">
+                    <span class="forecast-max">{dia['max']}°</span>
+                    <span class="forecast-min">{dia['min']}°</span>
+                </div>
+                {chuva_info}
+            </div>
+            """, unsafe_allow_html=True)
+else:
+    st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Previsão indisponível no momento</span></div>', unsafe_allow_html=True)
 
 # Botão de atualização
 st.markdown("<br>", unsafe_allow_html=True)
