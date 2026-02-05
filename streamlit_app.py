@@ -321,6 +321,11 @@ st.markdown("""
         color: rgba(255, 255, 255, 1);
     }
     
+    /* News item com borda verde (agro) */
+    .news-item-agro::before {
+        background: linear-gradient(180deg, #82b8a0, #a5c4a0);
+    }
+    
     /* Cards com imagem de fundo */
     .card-with-bg {
         background-size: cover;
@@ -537,6 +542,41 @@ st.markdown("""
         margin-top: 0.5rem;
     }
     
+    /* Barra de alocação */
+    .alloc-bar-container {
+        width: 100%;
+        height: 12px;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        margin: 0.75rem 0;
+        background: rgba(255,255,255,0.05);
+    }
+    .alloc-bar-segment {
+        height: 100%;
+        transition: width 0.5s ease;
+    }
+    .alloc-legend {
+        display: flex;
+        gap: 1.2rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+    .alloc-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.7);
+    }
+    .alloc-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
     /* Responsividade */
     @media (max-width: 768px) {
         .card-value { font-size: 1.6rem; }
@@ -566,6 +606,10 @@ CARTEIRA_BR = {
     "TTEN3.SA": (17, 14.61),
     "JALL3.SA": (43, 4.65),
     "AMOB3.SA": (3, 0.00),
+}
+
+# FIIs separados
+CARTEIRA_FII = {
     "GARE11.SA": (142, 9.10),
     "KNCR11.SA": (9, 103.30),
 }
@@ -608,6 +652,9 @@ CARTEIRA_US = {
     "MAGS": (0.09928, 54.19),
     "INTR": (0.77762, 6.43),
 }
+
+# Top 5 posições US para mostrar individualmente
+TOP_US = ["VOO", "QQQ", "TSLA", "OKLO", "GOOGL"]
 
 # --- FUNÇÕES COM CACHE ---
 
@@ -659,7 +706,7 @@ def get_weather_forecast_5days(lat, lon):
             "longitude": lon,
             "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum",
             "timezone": "America/Sao_Paulo",
-            "forecast_days": 6  # Pega 6 dias (hoje + 5)
+            "forecast_days": 6
         }
         response = requests.get(url, params=params, timeout=10)
         data = response.json().get("daily", {})
@@ -677,7 +724,6 @@ def get_weather_forecast_5days(lat, lon):
         dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
         forecast = []
         
-        # Pula o primeiro dia (hoje) e pega os próximos 5
         for i in range(1, 6):
             if i < len(data.get("time", [])):
                 date_str = data["time"][i]
@@ -728,35 +774,13 @@ def get_dolar():
         return 6.0
 
 @st.cache_data(ttl=900)
-def calcular_variacao_carteira_br():
+def calcular_carteira(carteira):
+    """Calcula variação, patrimônio e lucro de uma carteira"""
     variacao_total = 0.0
     patrimonio_atual = 0.0
     custo_total = 0.0
     
-    for ticker, (qtd, pm) in CARTEIRA_BR.items():
-        try:
-            acao = yf.Ticker(ticker)
-            hist = acao.history(period="2d")
-            if len(hist) >= 1:
-                preco_atual = hist['Close'].iloc[-1]
-                preco_anterior = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual
-                variacao_dia = (preco_atual - preco_anterior) * qtd
-                variacao_total += variacao_dia
-                patrimonio_atual += preco_atual * qtd
-                custo_total += pm * qtd
-        except:
-            continue
-    
-    lucro_total = patrimonio_atual - custo_total
-    return variacao_total, patrimonio_atual, lucro_total
-
-@st.cache_data(ttl=900)
-def calcular_variacao_carteira_us():
-    variacao_total = 0.0
-    patrimonio_atual = 0.0
-    custo_total = 0.0
-    
-    for ticker, (qtd, pm) in CARTEIRA_US.items():
+    for ticker, (qtd, pm) in carteira.items():
         try:
             acao = yf.Ticker(ticker)
             hist = acao.history(period="2d")
@@ -806,7 +830,6 @@ def get_single_news(query):
 # --- TMDB API CONFIG ---
 TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5NzhlZTAxMTg0NmZkNGEzODFlMjE5NzIxNDA3ZTcxMyIsIm5iZiI6MTc2OTI4NzY2NS41NDQsInN1YiI6IjY5NzUyZmYxMjBjYTQ5ZjZiOGFlMmYzOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5sSTiI-dCh5kfrqAFgGRLS4Ba-X_zv0twE6KnRDjf0g"
 
-# Mapeamento de gêneros do TMDB
 TMDB_GENRES = {
     28: "Ação", 12: "Aventura", 16: "Animação", 35: "Comédia", 80: "Crime",
     99: "Documentário", 18: "Drama", 10751: "Família", 14: "Fantasia",
@@ -820,34 +843,26 @@ TMDB_GENRES = {
 
 @st.cache_data(ttl=3600)
 def get_tmdb_trending():
-    """Busca filmes e séries em alta no TMDB com imagens"""
     if not TMDB_API_KEY:
         return None
-    
     try:
         headers = {
             "accept": "application/json",
             "Authorization": f"Bearer {TMDB_API_KEY}"
         }
-        
         resultados = []
         
-        # Buscar filmes em alta
         url_movies = "https://api.themoviedb.org/3/trending/movie/week?language=pt-BR"
         response_movies = requests.get(url_movies, headers=headers, timeout=10)
-        
         if response_movies.status_code == 200:
             movies = response_movies.json().get("results", [])[:6]
             for movie in movies:
                 generos = [TMDB_GENRES.get(g, "") for g in movie.get("genre_ids", [])[:2]]
                 genero_str = "/".join([g for g in generos if g]) or "Drama"
-                
-                # Pega backdrop (horizontal) ou poster como fallback
                 backdrop = movie.get("backdrop_path")
                 poster = movie.get("poster_path")
                 img_path = backdrop or poster
                 img_url = f"https://image.tmdb.org/t/p/w780{img_path}" if img_path else None
-                
                 resultados.append({
                     "titulo": movie.get("title", "Sem título"),
                     "tipo": "Filme",
@@ -857,21 +872,17 @@ def get_tmdb_trending():
                     "imagem": img_url
                 })
         
-        # Buscar séries em alta
         url_tv = "https://api.themoviedb.org/3/trending/tv/week?language=pt-BR"
         response_tv = requests.get(url_tv, headers=headers, timeout=10)
-        
         if response_tv.status_code == 200:
             shows = response_tv.json().get("results", [])[:6]
             for show in shows:
                 generos = [TMDB_GENRES.get(g, "") for g in show.get("genre_ids", [])[:2]]
                 genero_str = "/".join([g for g in generos if g]) or "Drama"
-                
                 backdrop = show.get("backdrop_path")
                 poster = show.get("poster_path")
                 img_path = backdrop or poster
                 img_url = f"https://image.tmdb.org/t/p/w780{img_path}" if img_path else None
-                
                 resultados.append({
                     "titulo": show.get("name", "Sem título"),
                     "tipo": "Série",
@@ -882,11 +893,9 @@ def get_tmdb_trending():
                 })
         
         return resultados if resultados else None
-        
-    except Exception as e:
+    except:
         return None
 
-# Lista fallback com imagens
 INDICACOES_FALLBACK = [
     {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/rLb2cwF3Pazuxaj0sRXQ037tGI1.jpg"},
     {"titulo": "Chernobyl", "tipo": "Série", "genero": "Drama/Histórico", "nota": "9.4", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/900tHlUYUkp7Ol04XFSoAaEIXcT.jpg"},
@@ -909,7 +918,6 @@ EMPRESAS_IA = [
 
 # --- LAYOUT DO DASHBOARD ---
 
-# Ajuste de fuso horário
 fuso_brasilia = pytz.timezone('America/Sao_Paulo')
 agora = datetime.now(fuso_brasilia)
 dia_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][agora.weekday()]
@@ -969,16 +977,17 @@ with col3:
 st.markdown('<div class="section-title"><span class="section-icon">💰</span> Minha Carteira</div>', unsafe_allow_html=True)
 
 dolar = get_dolar()
-var_br, patrim_br, lucro_br = calcular_variacao_carteira_br()
-var_us, patrim_us, lucro_us = calcular_variacao_carteira_us()
+var_br, patrim_br, lucro_br = calcular_carteira(CARTEIRA_BR)
+var_fii, patrim_fii, lucro_fii = calcular_carteira(CARTEIRA_FII)
+var_us, patrim_us, lucro_us = calcular_carteira(CARTEIRA_US)
 
 var_us_brl = var_us * dolar
 patrim_us_brl = patrim_us * dolar
 lucro_us_brl = lucro_us * dolar
 
-var_total_brl = var_br + var_us_brl
-patrim_total = patrim_br + patrim_us_brl
-lucro_total = lucro_br + lucro_us_brl
+var_total_brl = var_br + var_fii + var_us_brl
+patrim_total = patrim_br + patrim_fii + patrim_us_brl
+lucro_total = lucro_br + lucro_fii + lucro_us_brl
 
 col_c1, col_c2, col_c3, col_c4 = st.columns(4)
 
@@ -990,19 +999,18 @@ with col_c1:
     <div class="glass-card {'glass-green' if var_total_brl >= 0 else 'glass-rose'}">
         <div class="card-label">📊 Variação Hoje</div>
         <div class="card-value" style="color: {valor_cor};">{symbol} R$ {abs(var_total_brl):,.0f}</div>
-        <div class="card-subtitle">BR: R$ {var_br:+,.0f} · US: R$ {var_us_brl:+,.0f}</div>
+        <div class="card-subtitle">BR: R$ {var_br:+,.0f} · FII: R$ {var_fii:+,.0f} · US: R$ {var_us_brl:+,.0f}</div>
     </div>
     """, unsafe_allow_html=True)
 
 with col_c2:
-    badge_class = "badge-positive" if lucro_total >= 0 else "badge-negative"
     symbol = "▲" if lucro_total >= 0 else "▼"
     valor_cor = "#a8e6cf" if lucro_total >= 0 else "#e6a8a8"
     st.markdown(f"""
     <div class="glass-card {'glass-green' if lucro_total >= 0 else 'glass-rose'}">
         <div class="card-label">💎 Lucro vs PM</div>
         <div class="card-value" style="color: {valor_cor};">{symbol} R$ {abs(lucro_total):,.0f}</div>
-        <div class="card-subtitle">BR: R$ {lucro_br:+,.0f} · US: R$ {lucro_us_brl:+,.0f}</div>
+        <div class="card-subtitle">BR: R$ {lucro_br:+,.0f} · FII: R$ {lucro_fii:+,.0f} · US: R$ {lucro_us_brl:+,.0f}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1029,10 +1037,55 @@ with col_c4:
     """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# SEÇÃO: AÇÕES EM DESTAQUE
+# SEÇÃO: ALOCAÇÃO DA CARTEIRA
 # ═══════════════════════════════════════════════════════════════
 
-st.markdown('<div class="section-title"><span class="section-icon">📈</span> Ações em Destaque</div>', unsafe_allow_html=True)
+pct_br = (patrim_br / patrim_total * 100) if patrim_total > 0 else 0
+pct_fii = (patrim_fii / patrim_total * 100) if patrim_total > 0 else 0
+pct_us = (patrim_us_brl / patrim_total * 100) if patrim_total > 0 else 0
+
+col_alloc1, col_alloc2 = st.columns([2, 1])
+
+with col_alloc1:
+    st.markdown(f"""
+    <div class="glass-card glass-dark">
+        <div class="card-label">📐 Alocação por Classe</div>
+        <div class="alloc-bar-container">
+            <div class="alloc-bar-segment" style="width: {pct_br}%; background: linear-gradient(90deg, #a5b4c4, #7a9ab4);"></div>
+            <div class="alloc-bar-segment" style="width: {pct_fii}%; background: linear-gradient(90deg, #c4a5d4, #a07ab4);"></div>
+            <div class="alloc-bar-segment" style="width: {pct_us}%; background: linear-gradient(90deg, #a8e6cf, #6bc4a0);"></div>
+        </div>
+        <div class="alloc-legend">
+            <div class="alloc-legend-item">
+                <span class="alloc-dot" style="background: #7a9ab4;"></span>
+                🇧🇷 Ações BR · {pct_br:.1f}% · R$ {patrim_br:,.0f}
+            </div>
+            <div class="alloc-legend-item">
+                <span class="alloc-dot" style="background: #a07ab4;"></span>
+                🏢 FIIs · {pct_fii:.1f}% · R$ {patrim_fii:,.0f}
+            </div>
+            <div class="alloc-legend-item">
+                <span class="alloc-dot" style="background: #6bc4a0;"></span>
+                🇺🇸 EUA · {pct_us:.1f}% · R$ {patrim_us_brl:,.0f}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_alloc2:
+    st.markdown(f"""
+    <div class="glass-card glass-dark" style="text-align: center;">
+        <div class="card-label" style="justify-content: center;">🏦 Patrimônio Total</div>
+        <div class="card-value card-value-lg">R$ {patrim_total:,.0f}</div>
+        <div class="card-subtitle">Ações + FIIs + EUA</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# SEÇÃO: AÇÕES BR EM DESTAQUE
+# ═══════════════════════════════════════════════════════════════
+
+st.markdown('<div class="section-title"><span class="section-icon">📈</span> Ações BR em Destaque</div>', unsafe_allow_html=True)
 
 stocks = {
     "PRIO3": "PRIO3.SA", "BBAS3": "BBAS3.SA", "MOVI3": "MOVI3.SA",
@@ -1052,6 +1105,40 @@ for i, (name, ticker) in enumerate(stocks.items()):
             <div class="card-label">{name}</div>
             <div class="card-value card-value-sm">R$ {price:.2f}</div>
             <div><span class="badge {badge_class}" style="color: {valor_cor};">{symbol} {var:.1f}%</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# SEÇÃO: TOP 5 AÇÕES US
+# ═══════════════════════════════════════════════════════════════
+
+st.markdown('<div class="section-title"><span class="section-icon">🇺🇸</span> Top Posições EUA</div>', unsafe_allow_html=True)
+
+cols_us = st.columns(5)
+glass_us_colors = ["glass-blue", "glass-purple", "glass-rose", "glass-green", "glass-gold"]
+
+for i, ticker in enumerate(TOP_US):
+    price, var = get_stock_data(ticker)
+    qtd, pm = CARTEIRA_US[ticker]
+    posicao_usd = price * qtd
+    posicao_brl = posicao_usd * dolar
+    lucro_pct = ((price - pm) / pm * 100) if pm > 0 else 0
+    
+    badge_class = "badge-positive" if var >= 0 else "badge-negative"
+    symbol = "▲" if var >= 0 else "▼"
+    valor_cor = "#a8e6cf" if var >= 0 else "#e6a8a8"
+    lucro_cor = "#a8e6cf" if lucro_pct >= 0 else "#e6a8a8"
+    lucro_sym = "▲" if lucro_pct >= 0 else "▼"
+    
+    with cols_us[i]:
+        st.markdown(f"""
+        <div class="glass-card {glass_us_colors[i]}">
+            <div class="card-label">{ticker}</div>
+            <div class="card-value card-value-sm">${price:.2f}</div>
+            <div><span class="badge {badge_class}" style="color: {valor_cor};">{symbol} {var:.1f}%</span></div>
+            <div class="card-subtitle" style="margin-top: 6px;">
+                <span style="color: {lucro_cor};">{lucro_sym} {abs(lucro_pct):.1f}% vs PM</span> · R$ {posicao_brl:,.0f}
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1087,6 +1174,34 @@ for i, (name, (ticker, emoji)) in enumerate(commodities.items()):
         """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
+# SEÇÃO: NOTÍCIAS DO AGRO
+# ═══════════════════════════════════════════════════════════════
+
+st.markdown('<div class="section-title"><span class="section-icon">🚜</span> Agro & Insumos</div>', unsafe_allow_html=True)
+
+col_agro1, col_agro2 = st.columns(2)
+
+with col_agro1:
+    st.markdown('<div class="card-label" style="margin-bottom: 1rem; font-size: 0.9rem;">🌾 SAFRA & COMMODITIES</div>', unsafe_allow_html=True)
+    news_safra = get_news("safra soja milho algodão Brasil")
+    if news_safra:
+        for item in news_safra:
+            titulo = item.title[:80] + "..." if len(item.title) > 80 else item.title
+            st.markdown(f'<div class="news-item news-item-agro"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
+
+with col_agro2:
+    st.markdown('<div class="card-label" style="margin-bottom: 1rem; font-size: 0.9rem;">🧪 DEFENSIVOS & INSUMOS</div>', unsafe_allow_html=True)
+    news_defensivos = get_news("defensivos agrícolas herbicida inseticida agroquímicos Brasil")
+    if news_defensivos:
+        for item in news_defensivos:
+            titulo = item.title[:80] + "..." if len(item.title) > 80 else item.title
+            st.markdown(f'<div class="news-item news-item-agro"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
 # SEÇÃO: IA & TECH
 # ═══════════════════════════════════════════════════════════════
 
@@ -1119,7 +1234,7 @@ for i, empresa in enumerate(EMPRESAS_IA):
             """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# SEÇÃO: FILMES & SÉRIES (COM IMAGENS DE FUNDO)
+# SEÇÃO: FILMES & SÉRIES
 # ═══════════════════════════════════════════════════════════════
 
 tmdb_data = get_tmdb_trending()
@@ -1138,14 +1253,12 @@ for i, indicacao in enumerate(indicacoes_dia):
     emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
     img_url = indicacao.get("imagem", "")
     
-    # Truncar título se muito longo
     titulo = indicacao['titulo']
     if len(titulo) > 25:
         titulo = titulo[:22] + "..."
     
     with cols_f[i]:
         if img_url:
-            # Card quadrado com imagem de fundo
             st.markdown(f"""
             <div class="movie-card" style="
                 background: linear-gradient(to top, 
@@ -1161,7 +1274,6 @@ for i, indicacao in enumerate(indicacoes_dia):
             </div>
             """, unsafe_allow_html=True)
         else:
-            # Fallback sem imagem - também quadrado
             st.markdown(f"""
             <div class="glass-card glass-purple media-card" style="aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: flex-end;">
                 <div class="media-rating">⭐ {indicacao['nota']}</div>
@@ -1219,6 +1331,39 @@ if forecast_quiri:
             
             st.markdown(f"""
             <div class="glass-card {glass_forecast[i]} forecast-card">
+                <div class="forecast-day">{dia['dia']}</div>
+                <div class="card-subtitle" style="font-size: 0.75rem;">{dia['data']}</div>
+                <div class="forecast-icon">{dia['icon']}</div>
+                <div class="forecast-temp">
+                    <span class="forecast-max">{dia['max']}°</span>
+                    <span class="forecast-min">{dia['min']}°</span>
+                </div>
+                {chuva_info}
+            </div>
+            """, unsafe_allow_html=True)
+else:
+    st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Previsão indisponível no momento</span></div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════
+# SEÇÃO: PREVISÃO 5 DIAS - CORURIPE
+# ═══════════════════════════════════════════════════════════════
+
+st.markdown('<div class="section-title"><span class="section-icon">🌊</span> Previsão 5 Dias · <span style="font-weight: 400; font-size: 0.85rem; opacity: 0.7;">Coruripe, AL</span></div>', unsafe_allow_html=True)
+
+forecast_coru = get_weather_forecast_5days(-10.1264, -36.1756)
+
+if forecast_coru:
+    cols_forecast_c = st.columns(5)
+    glass_forecast_c = ["glass-green", "glass-blue", "glass-gold", "glass-purple", "glass-rose"]
+    
+    for i, dia in enumerate(forecast_coru):
+        with cols_forecast_c[i]:
+            chuva_info = ""
+            if dia['chuva_prob'] > 20:
+                chuva_info = f'<div class="forecast-rain">💧 {dia["chuva_prob"]}%</div>'
+            
+            st.markdown(f"""
+            <div class="glass-card {glass_forecast_c[i]} forecast-card">
                 <div class="forecast-day">{dia['dia']}</div>
                 <div class="card-subtitle" style="font-size: 0.75rem;">{dia['data']}</div>
                 <div class="forecast-icon">{dia['icon']}</div>
