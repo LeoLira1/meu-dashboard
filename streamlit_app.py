@@ -443,9 +443,9 @@ st.markdown("""
         position: absolute;
         top: 10px;
         right: 10px;
-        background: rgba(0, 0, 0, 0.65);
+        background: rgba(0, 0, 0, 0.75);
         backdrop-filter: blur(8px);
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 8px;
         font-family: 'Space Grotesk', sans-serif;
         font-size: 0.75rem;
@@ -458,23 +458,26 @@ st.markdown("""
         font-size: 0.65rem;
         text-transform: uppercase;
         letter-spacing: 1.2px;
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(255, 255, 255, 0.85);
         margin-bottom: 2px;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
     
     .movie-card-title {
         font-family: 'Space Grotesk', sans-serif;
         font-size: 0.95rem;
         font-weight: 600;
-        color: rgba(255, 255, 255, 0.95);
+        color: rgba(255, 255, 255, 0.98);
         line-height: 1.25;
         margin-bottom: 3px;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
     }
     
     .movie-card-genre {
         font-family: 'Outfit', sans-serif;
         font-size: 0.7rem;
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 255, 255, 0.7);
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     }
     
     /* Efeito shimmer sutil */
@@ -1137,20 +1140,26 @@ for i, indicacao in enumerate(indicacoes_dia):
     emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
     img_url = indicacao.get("imagem", "")
     
+    # Truncar título se muito longo
+    titulo = indicacao['titulo']
+    if len(titulo) > 25:
+        titulo = titulo[:22] + "..."
+    
     with cols_f[i]:
         if img_url:
-            # Card quadrado com imagem de fundo
+            # Card quadrado com imagem de fundo e gradiente mais forte
             st.markdown(f"""
             <div class="movie-card" style="
                 background: linear-gradient(to top, 
-                    rgba(15, 15, 26, 0.95) 0%, 
-                    rgba(15, 15, 26, 0.6) 50%,
-                    rgba(15, 15, 26, 0.1) 100%), 
+                    rgba(10, 10, 20, 0.98) 0%, 
+                    rgba(10, 10, 20, 0.85) 35%,
+                    rgba(10, 10, 20, 0.4) 60%,
+                    rgba(10, 10, 20, 0.05) 100%), 
                     url('{img_url}');
             ">
                 <div class="movie-card-rating">⭐ {indicacao['nota']}</div>
                 <div class="movie-card-type">{emoji} {indicacao['tipo']}</div>
-                <div class="movie-card-title">{indicacao['titulo']}</div>
+                <div class="movie-card-title">{titulo}</div>
                 <div class="movie-card-genre">{indicacao['genero']}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -1160,7 +1169,7 @@ for i, indicacao in enumerate(indicacoes_dia):
             <div class="glass-card glass-purple media-card" style="aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: flex-end;">
                 <div class="media-rating">⭐ {indicacao['nota']}</div>
                 <div class="card-label">{emoji} {indicacao['tipo']}</div>
-                <div class="card-value card-value-sm">{indicacao['titulo']}</div>
+                <div class="card-value card-value-sm">{titulo}</div>
                 <div class="card-subtitle">{indicacao['genero']}</div>
             </div>
             """, unsafe_allow_html=True)
