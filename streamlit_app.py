@@ -417,6 +417,63 @@ st.markdown("""
         gap: 4px;
     }
     
+    /* Card de filme/série com imagem de fundo */
+    .movie-card {
+        background-size: cover;
+        background-position: center top;
+        border-radius: 20px;
+        padding: 140px 16px 16px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        min-height: 200px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+    
+    .movie-card:hover {
+        transform: translateY(-6px) scale(1.02);
+        border-color: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+    
+    .movie-card-rating {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        padding: 4px 10px;
+        border-radius: 10px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #ffd700;
+    }
+    
+    .movie-card-type {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 4px;
+    }
+    
+    .movie-card-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.95);
+        line-height: 1.3;
+        margin-bottom: 6px;
+    }
+    
+    .movie-card-genre {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
     /* Efeito shimmer sutil */
     @keyframes shimmer {
         0% { background-position: -200% 0; }
@@ -743,10 +800,7 @@ def get_single_news(query):
         return None
 
 # --- TMDB API CONFIG ---
-# Para usar a API do TMDB, crie uma conta em https://www.themoviedb.org/
-# e gere sua API key em https://www.themoviedb.org/settings/api
-# Depois cole sua chave abaixo:
-TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5NzhlZTAxMTg0NmZkNGEzODFlMjE5NzIxNDA3ZTcxMyIsIm5iZiI6MTc2OTI4NzY2NS41NDQsInN1YiI6IjY5NzUyZmYxMjBjYTQ5ZjZiOGFlMmYzOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5sSTiI-dCh5kfrqAFgGRLS4Ba-X_zv0twE6KnRDjf0g"  # Token de Leitura da API
+TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5NzhlZTAxMTg0NmZkNGEzODFlMjE5NzIxNDA3ZTcxMyIsIm5iZiI6MTc2OTI4NzY2NS41NDQsInN1YiI6IjY5NzUyZmYxMjBjYTQ5ZjZiOGFlMmYzOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5sSTiI-dCh5kfrqAFgGRLS4Ba-X_zv0twE6KnRDjf0g"
 
 # Mapeamento de gêneros do TMDB
 TMDB_GENRES = {
@@ -760,9 +814,9 @@ TMDB_GENRES = {
     10767: "Talk Show", 10768: "Guerra & Política"
 }
 
-@st.cache_data(ttl=3600)  # Cache de 1 hora
+@st.cache_data(ttl=3600)
 def get_tmdb_trending():
-    """Busca filmes e séries em alta no TMDB"""
+    """Busca filmes e séries em alta no TMDB com imagens"""
     if not TMDB_API_KEY:
         return None
     
@@ -783,12 +837,20 @@ def get_tmdb_trending():
             for movie in movies:
                 generos = [TMDB_GENRES.get(g, "") for g in movie.get("genre_ids", [])[:2]]
                 genero_str = "/".join([g for g in generos if g]) or "Drama"
+                
+                # Pega backdrop (horizontal) ou poster como fallback
+                backdrop = movie.get("backdrop_path")
+                poster = movie.get("poster_path")
+                img_path = backdrop or poster
+                img_url = f"https://image.tmdb.org/t/p/w780{img_path}" if img_path else None
+                
                 resultados.append({
                     "titulo": movie.get("title", "Sem título"),
                     "tipo": "Filme",
                     "genero": genero_str,
                     "nota": f"{movie.get('vote_average', 0):.1f}",
-                    "onde": "Em alta 🔥"
+                    "onde": "Em alta 🔥",
+                    "imagem": img_url
                 })
         
         # Buscar séries em alta
@@ -800,12 +862,19 @@ def get_tmdb_trending():
             for show in shows:
                 generos = [TMDB_GENRES.get(g, "") for g in show.get("genre_ids", [])[:2]]
                 genero_str = "/".join([g for g in generos if g]) or "Drama"
+                
+                backdrop = show.get("backdrop_path")
+                poster = show.get("poster_path")
+                img_path = backdrop or poster
+                img_url = f"https://image.tmdb.org/t/p/w780{img_path}" if img_path else None
+                
                 resultados.append({
                     "titulo": show.get("name", "Sem título"),
                     "tipo": "Série",
                     "genero": genero_str,
                     "nota": f"{show.get('vote_average', 0):.1f}",
-                    "onde": "Em alta 🔥"
+                    "onde": "Em alta 🔥",
+                    "imagem": img_url
                 })
         
         return resultados if resultados else None
@@ -813,25 +882,18 @@ def get_tmdb_trending():
     except Exception as e:
         return None
 
-# Lista fallback caso a API não esteja configurada
+# Lista fallback com imagens
 INDICACOES_FALLBACK = [
-    {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video"},
-    {"titulo": "Se7en", "tipo": "Filme", "genero": "Suspense/Crime", "nota": "8.6", "onde": "Netflix"},
-    {"titulo": "Interestelar", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.7", "onde": "Prime Video"},
-    {"titulo": "Clube da Luta", "tipo": "Filme", "genero": "Drama/Suspense", "nota": "8.8", "onde": "Star+"},
-    {"titulo": "Parasita", "tipo": "Filme", "genero": "Suspense/Drama", "nota": "8.5", "onde": "Prime Video"},
-    {"titulo": "A Origem", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "HBO Max"},
-    {"titulo": "Duna: Parte 2", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "Max"},
-    {"titulo": "Whiplash", "tipo": "Filme", "genero": "Drama/Musical", "nota": "8.5", "onde": "Prime Video"},
-    {"titulo": "Breaking Bad", "tipo": "Série", "genero": "Drama/Crime", "nota": "9.5", "onde": "Netflix"},
-    {"titulo": "Succession", "tipo": "Série", "genero": "Drama", "nota": "8.9", "onde": "Max"},
-    {"titulo": "Dark", "tipo": "Série", "genero": "Ficção Científica", "nota": "8.7", "onde": "Netflix"},
-    {"titulo": "Severance", "tipo": "Série", "genero": "Suspense/Ficção", "nota": "8.7", "onde": "Apple TV+"},
-    {"titulo": "The Bear", "tipo": "Série", "genero": "Drama/Comédia", "nota": "8.6", "onde": "Star+"},
-    {"titulo": "Shogun", "tipo": "Série", "genero": "Drama/Histórico", "nota": "8.7", "onde": "Star+"},
-    {"titulo": "True Detective S1", "tipo": "Série", "genero": "Crime/Drama", "nota": "9.0", "onde": "Max"},
-    {"titulo": "Chernobyl", "tipo": "Série", "genero": "Drama/Histórico", "nota": "9.4", "onde": "Max"},
-    {"titulo": "The Last of Us", "tipo": "Série", "genero": "Drama/Ação", "nota": "8.8", "onde": "Max"},
+    {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/rLb2cwF3Pazuxaj0sRXQ037tGI1.jpg"},
+    {"titulo": "Chernobyl", "tipo": "Série", "genero": "Drama/Histórico", "nota": "9.4", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/900tHlUYUkp7Ol04XFSoAaEIXcT.jpg"},
+    {"titulo": "Interestelar", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.7", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/xJHokMbljvjADYdit5fK5VQsXEG.jpg"},
+    {"titulo": "Breaking Bad", "tipo": "Série", "genero": "Drama/Crime", "nota": "9.5", "onde": "Netflix", "imagem": "https://image.tmdb.org/t/p/w780/gc8PfyTqzqltKMYi6Rj87eq0FNj.jpg"},
+    {"titulo": "Duna: Parte 2", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg"},
+    {"titulo": "Severance", "tipo": "Série", "genero": "Suspense/Ficção", "nota": "8.7", "onde": "Apple TV+", "imagem": "https://image.tmdb.org/t/p/w780/lmerln1GAMwEfxhDkhYKRBOg9C6.jpg"},
+    {"titulo": "Blade Runner 2049", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.0", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg"},
+    {"titulo": "The Bear", "tipo": "Série", "genero": "Drama/Comédia", "nota": "8.6", "onde": "Star+", "imagem": "https://image.tmdb.org/t/p/w780/sJd8fNieR1yiUeNbqppjUYPlr7L.jpg"},
+    {"titulo": "True Detective S1", "tipo": "Série", "genero": "Crime/Drama", "nota": "9.0", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/aoGVe0M6cuUevz79lhsqJZBZsrn.jpg"},
+    {"titulo": "A Origem", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "HBO Max", "imagem": "https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg"},
 ]
 
 EMPRESAS_IA = [
@@ -1053,10 +1115,9 @@ for i, empresa in enumerate(EMPRESAS_IA):
             """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# SEÇÃO: FILMES & SÉRIES
+# SEÇÃO: FILMES & SÉRIES (COM IMAGENS DE FUNDO)
 # ═══════════════════════════════════════════════════════════════
 
-# Tentar buscar do TMDB, senão usar fallback
 tmdb_data = get_tmdb_trending()
 if tmdb_data:
     indicacoes_dia = random.sample(tmdb_data, min(4, len(tmdb_data)))
@@ -1066,21 +1127,42 @@ else:
     section_subtitle = "Recomendações"
 
 st.markdown(f'<div class="section-title"><span class="section-icon">🎬</span> Filmes & Séries · <span style="font-weight: 400; font-size: 0.85rem; opacity: 0.7;">{section_subtitle}</span></div>', unsafe_allow_html=True)
+
 cols_f = st.columns(4)
-glass_media = ["glass-purple", "glass-rose", "glass-blue", "glass-dark"]
 
 for i, indicacao in enumerate(indicacoes_dia):
     emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
+    img_url = indicacao.get("imagem", "")
+    
     with cols_f[i]:
-        st.markdown(f"""
-        <div class="glass-card {glass_media[i]} media-card">
-            <div class="media-rating">⭐ {indicacao['nota']}</div>
-            <div class="card-label">{emoji} {indicacao['tipo']}</div>
-            <div class="card-value card-value-sm" style="margin-top: 0.5rem;">{indicacao['titulo']}</div>
-            <div class="card-subtitle" style="margin-top: 0.5rem;">{indicacao['genero']}</div>
-            <div class="card-subtitle">{indicacao['onde']}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        if img_url:
+            # Card com imagem de fundo estilo cinematográfico
+            st.markdown(f"""
+            <div class="movie-card" style="
+                background: linear-gradient(to top, 
+                    rgba(15, 15, 26, 0.95) 0%, 
+                    rgba(15, 15, 26, 0.7) 40%,
+                    rgba(15, 15, 26, 0.3) 70%,
+                    rgba(15, 15, 26, 0.1) 100%), 
+                    url('{img_url}');
+            ">
+                <div class="movie-card-rating">⭐ {indicacao['nota']}</div>
+                <div class="movie-card-type">{emoji} {indicacao['tipo']}</div>
+                <div class="movie-card-title">{indicacao['titulo']}</div>
+                <div class="movie-card-genre">{indicacao['genero']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Fallback sem imagem
+            st.markdown(f"""
+            <div class="glass-card glass-purple media-card" style="min-height: 200px;">
+                <div class="media-rating">⭐ {indicacao['nota']}</div>
+                <div class="card-label">{emoji} {indicacao['tipo']}</div>
+                <div class="card-value card-value-sm" style="margin-top: 0.5rem;">{indicacao['titulo']}</div>
+                <div class="card-subtitle" style="margin-top: 0.5rem;">{indicacao['genero']}</div>
+                <div class="card-subtitle">{indicacao['onde']}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # SEÇÃO: NOTÍCIAS REGIONAIS
@@ -1124,7 +1206,6 @@ if forecast_quiri:
     
     for i, dia in enumerate(forecast_quiri):
         with cols_forecast[i]:
-            # Mostra probabilidade de chuva se > 20%
             chuva_info = ""
             if dia['chuva_prob'] > 20:
                 chuva_info = f'<div class="forecast-rain">💧 {dia["chuva_prob"]}%</div>'
@@ -1155,6 +1236,6 @@ with col_btn[1]:
 # Footer sutil
 st.markdown("""
 <div style="text-align: center; margin-top: 3rem; padding: 1rem; color: rgba(255,255,255,0.3); font-size: 0.75rem;">
-    Atualizado às {time} · Dados via Yahoo Finance & Open-Meteo
+    Atualizado às {time} · Dados via Yahoo Finance, Open-Meteo & TMDB
 </div>
 """.format(time=agora.strftime("%H:%M")), unsafe_allow_html=True)
