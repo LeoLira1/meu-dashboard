@@ -1044,42 +1044,30 @@ pct_br = (patrim_br / patrim_total * 100) if patrim_total > 0 else 0
 pct_fii = (patrim_fii / patrim_total * 100) if patrim_total > 0 else 0
 pct_us = (patrim_us_brl / patrim_total * 100) if patrim_total > 0 else 0
 
-col_alloc1, col_alloc2 = st.columns([2, 1])
-
-with col_alloc1:
-    st.markdown(f"""
-    <div class="glass-card glass-dark">
-        <div class="card-label">📐 Alocação por Classe</div>
-        <div class="alloc-bar-container">
-            <div class="alloc-bar-segment" style="width: {pct_br}%; background: linear-gradient(90deg, #a5b4c4, #7a9ab4);"></div>
-            <div class="alloc-bar-segment" style="width: {pct_fii}%; background: linear-gradient(90deg, #c4a5d4, #a07ab4);"></div>
-            <div class="alloc-bar-segment" style="width: {pct_us}%; background: linear-gradient(90deg, #a8e6cf, #6bc4a0);"></div>
+st.markdown(f"""
+<div class="glass-card glass-dark">
+    <div class="card-label">📐 Alocação por Classe</div>
+    <div class="alloc-bar-container">
+        <div class="alloc-bar-segment" style="width: {pct_br}%; background: linear-gradient(90deg, #a5b4c4, #7a9ab4);"></div>
+        <div class="alloc-bar-segment" style="width: {pct_fii}%; background: linear-gradient(90deg, #c4a5d4, #a07ab4);"></div>
+        <div class="alloc-bar-segment" style="width: {pct_us}%; background: linear-gradient(90deg, #a8e6cf, #6bc4a0);"></div>
+    </div>
+    <div class="alloc-legend">
+        <div class="alloc-legend-item">
+            <span class="alloc-dot" style="background: #7a9ab4;"></span>
+            🇧🇷 Ações BR · {pct_br:.1f}%
         </div>
-        <div class="alloc-legend">
-            <div class="alloc-legend-item">
-                <span class="alloc-dot" style="background: #7a9ab4;"></span>
-                🇧🇷 Ações BR · {pct_br:.1f}% · R$ {patrim_br:,.0f}
-            </div>
-            <div class="alloc-legend-item">
-                <span class="alloc-dot" style="background: #a07ab4;"></span>
-                🏢 FIIs · {pct_fii:.1f}% · R$ {patrim_fii:,.0f}
-            </div>
-            <div class="alloc-legend-item">
-                <span class="alloc-dot" style="background: #6bc4a0;"></span>
-                🇺🇸 EUA · {pct_us:.1f}% · R$ {patrim_us_brl:,.0f}
-            </div>
+        <div class="alloc-legend-item">
+            <span class="alloc-dot" style="background: #a07ab4;"></span>
+            🏢 FIIs · {pct_fii:.1f}%
+        </div>
+        <div class="alloc-legend-item">
+            <span class="alloc-dot" style="background: #6bc4a0;"></span>
+            🇺🇸 EUA · {pct_us:.1f}%
         </div>
     </div>
-    """, unsafe_allow_html=True)
-
-with col_alloc2:
-    st.markdown(f"""
-    <div class="glass-card glass-dark" style="text-align: center;">
-        <div class="card-label" style="justify-content: center;">🏦 Patrimônio Total</div>
-        <div class="card-value card-value-lg">R$ {patrim_total:,.0f}</div>
-        <div class="card-subtitle">Ações + FIIs + EUA</div>
-    </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # SEÇÃO: AÇÕES BR EM DESTAQUE
