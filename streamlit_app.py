@@ -417,60 +417,63 @@ st.markdown("""
         gap: 4px;
     }
     
-    /* Card de filme/série com imagem de fundo */
+    /* Card de filme/série com imagem de fundo - QUADRADO */
     .movie-card {
         background-size: cover;
-        background-position: center top;
-        border-radius: 20px;
-        padding: 140px 16px 16px 16px;
+        background-position: center;
+        border-radius: 16px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         position: relative;
-        min-height: 200px;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 14px;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         overflow: hidden;
     }
     
     .movie-card:hover {
-        transform: translateY(-6px) scale(1.02);
+        transform: translateY(-4px) scale(1.02);
         border-color: rgba(255, 255, 255, 0.25);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
     }
     
     .movie-card-rating {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        background: rgba(0, 0, 0, 0.6);
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.65);
         backdrop-filter: blur(8px);
-        padding: 4px 10px;
-        border-radius: 10px;
+        padding: 3px 8px;
+        border-radius: 8px;
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
         color: #ffd700;
     }
     
     .movie-card-type {
         font-family: 'Outfit', sans-serif;
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: rgba(255, 255, 255, 0.6);
-        margin-bottom: 4px;
+        letter-spacing: 1.2px;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 2px;
     }
     
     .movie-card-title {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         font-weight: 600;
         color: rgba(255, 255, 255, 0.95);
-        line-height: 1.3;
-        margin-bottom: 6px;
+        line-height: 1.25;
+        margin-bottom: 3px;
     }
     
     .movie-card-genre {
         font-family: 'Outfit', sans-serif;
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         color: rgba(255, 255, 255, 0.5);
     }
     
@@ -1136,13 +1139,12 @@ for i, indicacao in enumerate(indicacoes_dia):
     
     with cols_f[i]:
         if img_url:
-            # Card com imagem de fundo estilo cinematográfico
+            # Card quadrado com imagem de fundo
             st.markdown(f"""
             <div class="movie-card" style="
                 background: linear-gradient(to top, 
                     rgba(15, 15, 26, 0.95) 0%, 
-                    rgba(15, 15, 26, 0.7) 40%,
-                    rgba(15, 15, 26, 0.3) 70%,
+                    rgba(15, 15, 26, 0.6) 50%,
                     rgba(15, 15, 26, 0.1) 100%), 
                     url('{img_url}');
             ">
@@ -1153,14 +1155,13 @@ for i, indicacao in enumerate(indicacoes_dia):
             </div>
             """, unsafe_allow_html=True)
         else:
-            # Fallback sem imagem
+            # Fallback sem imagem - também quadrado
             st.markdown(f"""
-            <div class="glass-card glass-purple media-card" style="min-height: 200px;">
+            <div class="glass-card glass-purple media-card" style="aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: flex-end;">
                 <div class="media-rating">⭐ {indicacao['nota']}</div>
                 <div class="card-label">{emoji} {indicacao['tipo']}</div>
-                <div class="card-value card-value-sm" style="margin-top: 0.5rem;">{indicacao['titulo']}</div>
-                <div class="card-subtitle" style="margin-top: 0.5rem;">{indicacao['genero']}</div>
-                <div class="card-subtitle">{indicacao['onde']}</div>
+                <div class="card-value card-value-sm">{indicacao['titulo']}</div>
+                <div class="card-subtitle">{indicacao['genero']}</div>
             </div>
             """, unsafe_allow_html=True)
 
