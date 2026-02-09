@@ -585,7 +585,6 @@ st.markdown("""
     }
 </style>
 
-<!-- Orbes decorativas -->
 <div class="orb orb-1"></div>
 <div class="orb orb-2"></div>
 <div class="orb orb-3"></div>
@@ -763,19 +762,28 @@ def get_stock_data(ticker):
         return 0.0, 0.0
 
 @st.cache_data(ttl=900)
-def get_dolar():
+def get_dolar_rates():
+    """Retorna (Dólar Hoje, Dólar Ontem)"""
     try:
         ticker = yf.Ticker("USDBRL=X")
-        hist = ticker.history(period="1d")
-        if len(hist) >= 1:
-            return hist['Close'].iloc[-1]
-        return 6.0
+        hist = ticker.history(period="5d") # Pega 5 dias pra garantir
+        if len(hist) >= 2:
+            return hist['Close'].iloc[-1], hist['Close'].iloc[-2]
+        # Fallback
+        val = hist['Close'].iloc[-1] if len(hist) > 0 else 6.0
+        return val, val
     except:
-        return 6.0
+        return 6.0, 6.0
+
+@st.cache_data(ttl=900)
+def get_dolar():
+    """Compatibilidade para cards simples"""
+    hj, ontem = get_dolar_rates()
+    return hj
 
 @st.cache_data(ttl=900)
 def calcular_carteira(carteira):
-    """Calcula variação, patrimônio e lucro de uma carteira"""
+    """Calcula variação, patrimônio e lucro de uma carteira (BR e FII)"""
     variacao_total = 0.0
     patrimonio_atual = 0.0
     custo_total = 0.0
@@ -796,6 +804,40 @@ def calcular_carteira(carteira):
     
     lucro_total = patrimonio_atual - custo_total
     return variacao_total, patrimonio_atual, lucro_total
+
+@st.cache_data(ttl=900)
+def calcular_carteira_us_com_cambio(carteira, dolar_atual, dolar_anterior):
+    """
+    Calcula carteira US considerando variação cambial.
+    Variação dia = (Valor em R$ Hoje) - (Valor em R$ Ontem)
+    """
+    variacao_total_brl = 0.0
+    patrimonio_atual_usd = 0.0
+    custo_total_usd = 0.0
+    
+    for ticker, (qtd, pm) in carteira.items():
+        try:
+            acao = yf.Ticker(ticker)
+            hist = acao.history(period="2d")
+            
+            if len(hist) >= 1:
+                preco_atual_usd = hist['Close'].iloc[-1]
+                preco_anterior_usd = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual_usd
+                
+                # Valor da posição convertida para reais
+                valor_posicao_hoje_brl = (preco_atual_usd * qtd) * dolar_atual
+                valor_posicao_ontem_brl = (preco_anterior_usd * qtd) * dolar_anterior
+                
+                # A variação real do dia é a diferença entre os montantes em reais
+                variacao_total_brl += (valor_posicao_hoje_brl - valor_posicao_ontem_brl)
+                
+                patrimonio_atual_usd += preco_atual_usd * qtd
+                custo_total_usd += pm * qtd
+        except:
+            continue
+            
+    lucro_total_usd = patrimonio_atual_usd - custo_total_usd
+    return variacao_total_brl, patrimonio_atual_usd, lucro_total_usd
 
 @st.cache_data(ttl=600)
 def get_news(query):
@@ -976,14 +1018,19 @@ with col3:
 
 st.markdown('<div class="section-title"><span class="section-icon">💰</span> Minha Carteira</div>', unsafe_allow_html=True)
 
-dolar = get_dolar()
+# 1. Pega dólar Hoje e Ontem
+dolar_hj, dolar_ontem = get_dolar_rates()
+
+# 2. Calcula Carteiras BR (Normal)
 var_br, patrim_br, lucro_br = calcular_carteira(CARTEIRA_BR)
 var_fii, patrim_fii, lucro_fii = calcular_carteira(CARTEIRA_FII)
-var_us, patrim_us, lucro_us = calcular_carteira(CARTEIRA_US)
 
-var_us_brl = var_us * dolar
-patrim_us_brl = patrim_us * dolar
-lucro_us_brl = lucro_us * dolar
+# 3. Calcula Carteira US considerando variação cambial no dia
+var_us_brl, patrim_us_usd, lucro_us_usd = calcular_carteira_us_com_cambio(CARTEIRA_US, dolar_hj, dolar_ontem)
+
+# Conversões totais para exibição
+patrim_us_brl = patrim_us_usd * dolar_hj
+lucro_us_brl = lucro_us_usd * dolar_hj
 
 var_total_brl = var_br + var_fii + var_us_brl
 patrim_total = patrim_br + patrim_fii + patrim_us_brl
@@ -997,7 +1044,7 @@ with col_c1:
     valor_cor = "#a8e6cf" if var_total_brl >= 0 else "#e6a8a8"
     st.markdown(f"""
     <div class="glass-card {'glass-green' if var_total_brl >= 0 else 'glass-rose'}">
-        <div class="card-label">📊 Variação Hoje</div>
+        <div class="card-label">📊 Variação Hoje (R$)</div>
         <div class="card-value" style="color: {valor_cor};">{symbol} R$ {abs(var_total_brl):,.0f}</div>
         <div class="card-subtitle">BR: R$ {var_br:+,.0f} · FII: R$ {var_fii:+,.0f} · US: R$ {var_us_brl:+,.0f}</div>
     </div>
@@ -1031,7 +1078,7 @@ with col_c4:
     st.markdown(f"""
     <div class="glass-card glass-gold">
         <div class="card-label">💵 Dólar</div>
-        <div class="card-value">R$ {dolar:.2f}</div>
+        <div class="card-value">R$ {dolar_hj:.2f}</div>
         <div class="card-subtitle">Cotação atual</div>
     </div>
     """, unsafe_allow_html=True)
@@ -1109,7 +1156,7 @@ for i, ticker in enumerate(TOP_US):
     price, var = get_stock_data(ticker)
     qtd, pm = CARTEIRA_US[ticker]
     posicao_usd = price * qtd
-    posicao_brl = posicao_usd * dolar
+    posicao_brl = posicao_usd * dolar_hj # Usa dólar de hoje
     lucro_pct = ((price - pm) / pm * 100) if pm > 0 else 0
     
     badge_class = "badge-positive" if var >= 0 else "badge-negative"
