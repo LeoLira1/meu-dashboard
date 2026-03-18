@@ -770,10 +770,11 @@ def get_dolar_rates():
     try:
         ticker = yf.Ticker("USDBRL=X")
         hist = ticker.history(period="5d") # Pega 5 dias pra garantir
-        if len(hist) >= 2:
-            return hist['Close'].iloc[-1], hist['Close'].iloc[-2]
+        close = hist['Close'].dropna()
+        if len(close) >= 2:
+            return float(close.iloc[-1]), float(close.iloc[-2])
         # Fallback
-        val = hist['Close'].iloc[-1] if len(hist) > 0 else 6.0
+        val = float(close.iloc[-1]) if len(close) > 0 else 6.0
         return val, val
     except:
         return 6.0, 6.0
@@ -797,7 +798,11 @@ def calcular_carteira(carteira):
             hist = acao.history(period="2d")
             if len(hist) >= 1:
                 preco_atual = hist['Close'].iloc[-1]
+                if pd.isna(preco_atual):
+                    continue
                 preco_anterior = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual
+                if pd.isna(preco_anterior):
+                    preco_anterior = preco_atual
                 variacao_dia = (preco_atual - preco_anterior) * qtd
                 variacao_total += variacao_dia
                 patrimonio_atual += preco_atual * qtd
@@ -822,18 +827,22 @@ def calcular_carteira_us_com_cambio(carteira, dolar_atual, dolar_anterior):
         try:
             acao = yf.Ticker(ticker)
             hist = acao.history(period="2d")
-            
+
             if len(hist) >= 1:
                 preco_atual_usd = hist['Close'].iloc[-1]
+                if pd.isna(preco_atual_usd):
+                    continue
                 preco_anterior_usd = hist['Close'].iloc[-2] if len(hist) > 1 else preco_atual_usd
-                
+                if pd.isna(preco_anterior_usd):
+                    preco_anterior_usd = preco_atual_usd
+
                 # Valor da posição convertida para reais
                 valor_posicao_hoje_brl = (preco_atual_usd * qtd) * dolar_atual
                 valor_posicao_ontem_brl = (preco_anterior_usd * qtd) * dolar_anterior
-                
+
                 # A variação real do dia é a diferença entre os montantes em reais
                 variacao_total_brl += (valor_posicao_hoje_brl - valor_posicao_ontem_brl)
-                
+
                 patrimonio_atual_usd += preco_atual_usd * qtd
                 custo_total_usd += pm * qtd
         except:
