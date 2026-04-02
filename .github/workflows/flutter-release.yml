@@ -1,0 +1,69 @@
+name: Flutter Release APK
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '.github/workflows/flutter-release.yml'
+      - 'flutter_dashboard_app/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter_dashboard_app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Create platform folders
+        run: flutter create --platforms android .
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build release APKs (split per ABI)
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: meu-dashboard-apk
+          path: |
+            flutter_dashboard_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            flutter_dashboard_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+      - name: Compute automatic tag
+        id: tag
+        run: echo "value=apk-${GITHUB_REF_NAME}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.value }}
+          name: APK ${{ steps.tag.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            flutter_dashboard_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            flutter_dashboard_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
