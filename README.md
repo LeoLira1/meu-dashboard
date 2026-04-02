@@ -35,14 +35,13 @@ flutter run
 
 Foi adicionado o workflow `.github/workflows/flutter-release.yml` que:
 
-
 1. dispara quando você publica uma Release no GitHub;
 2. gera o APK release do Flutter;
 3. anexa o `app-release.apk` na própria Release.
 
 ### Como usar
 
-1. Faça push da branch com esse setup para o GitHub.
+1. Faça merge/push desse setup na branch padrão (`main`).
 2. Crie uma Release (tag, por exemplo `v1.0.0`).
 3. Aguarde o GitHub Actions finalizar.
 4. Baixe o `app-release.apk` na seção de assets da Release.
