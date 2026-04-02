@@ -1,11 +1,6 @@
 name: Flutter Release APK
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - '.github/workflows/flutter-release.yml'
-      - 'flutter_dashboard_app/**'
   release:
     types: [published]
   workflow_dispatch:
