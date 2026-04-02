@@ -41,7 +41,7 @@ Foi adicionado o workflow `.github/workflows/flutter-release.yml` que:
 
 ### Como usar
 
-1. Faça merge/push desse setup na branch padrão (`main`).
+1. Faça push da sua branch e depois merge na branch padrão (`main`).
 2. Crie uma Release (tag, por exemplo `v1.0.0`).
 3. Aguarde o GitHub Actions finalizar.
 4. Baixe o `app-release.apk` na seção de assets da Release.
