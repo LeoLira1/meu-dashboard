@@ -36,10 +36,6 @@ flutter run
 Foi adicionado o workflow `.github/workflows/flutter-release.yml` que:
 
 
-> ⚠️ **Importante:** workflows só aparecem na aba **Actions** depois que o arquivo `.github/workflows/flutter-release.yml` está na branch padrão do repositório (`main` ou `master`).
->
-> Se você criou em outra branch e ainda não fez merge/push na branch padrão, a lista de workflows pode ficar vazia.
-
 1. dispara quando você publica uma Release no GitHub;
 2. gera o APK release do Flutter;
 3. anexa o `app-release.apk` na própria Release.
