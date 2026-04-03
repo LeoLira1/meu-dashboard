@@ -125,7 +125,7 @@ class _DashboardPageState extends State<DashboardPage> {
   QuoteData? _btc;
   WeatherData? _weather;
   bool _loading = true;
-  String? _error;
+  bool _hasConnectivity = true;
 
   @override
   void initState() {
@@ -134,91 +134,122 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _hasConnectivity = true;
+      });
+    }
 
+    final results = await Future.wait([
+      _fetchDollar(),
+      _fetchBtc(),
+      _fetchWeather(),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        // Show connectivity warning only if all three failed
+        _hasConnectivity = results.any((ok) => ok);
+      });
+    }
+  }
+
+  Future<bool> _fetchDollar() async {
     try {
-      await Future.wait([
-        _fetchDollar(),
-        _fetchBtc(),
-        _fetchWeather(),
-      ]);
+      final uri = Uri.parse('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+      final res = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final usdbrl = data['USDBRL'] as Map<String, dynamic>;
+        final bid = double.parse(usdbrl['bid'] as String);
+        final pct = double.parse(usdbrl['pctChange'] as String);
+        final sign = pct >= 0 ? '+' : '';
+        if (mounted) {
+          setState(() {
+            _dollar = QuoteData(
+              value: 'R\$ ${bid.toStringAsFixed(2).replaceAll('.', ',')}',
+              change: '$sign${pct.toStringAsFixed(2)}% hoje',
+              isPositive: pct >= 0,
+            );
+          });
+        }
+        return true;
+      }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Erro ao carregar dados. Tente novamente.');
+      // Fail silently — show placeholder in the card
     }
-
-    if (mounted) setState(() => _loading = false);
+    return false;
   }
 
-  Future<void> _fetchDollar() async {
-    final uri = Uri.parse('https://economia.awesomeapi.com.br/json/last/USD-BRL');
-    final res = await http.get(uri).timeout(const Duration(seconds: 10));
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final usdbrl = data['USDBRL'] as Map<String, dynamic>;
-      final bid = double.parse(usdbrl['bid'] as String);
-      final pct = double.parse(usdbrl['pctChange'] as String);
-      final sign = pct >= 0 ? '+' : '';
-      setState(() {
-        _dollar = QuoteData(
-          value: 'R\$ ${bid.toStringAsFixed(2).replaceAll('.', ',')}',
-          change: '$sign${pct.toStringAsFixed(2)}% hoje',
-          isPositive: pct >= 0,
-        );
-      });
+  Future<bool> _fetchBtc() async {
+    try {
+      final uri = Uri.parse(
+        'https://api.coingecko.com/api/v3/simple/price'
+        '?ids=bitcoin&vs_currencies=usd&include_24hr_change=true',
+      );
+      final res = await http.get(
+        uri,
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final btcData = data['bitcoin'] as Map<String, dynamic>;
+        final price = (btcData['usd'] as num).toDouble();
+        final change = (btcData['usd_24h_change'] as num).toDouble();
+        final sign = change >= 0 ? '+' : '';
+        if (mounted) {
+          setState(() {
+            _btc = QuoteData(
+              value: 'US\$ ${_formatPrice(price)}',
+              change: '$sign${change.toStringAsFixed(1)}% hoje',
+              isPositive: change >= 0,
+            );
+          });
+        }
+        return true;
+      }
+    } catch (_) {
+      // Fail silently — show placeholder in the card
     }
+    return false;
   }
 
-  Future<void> _fetchBtc() async {
-    final uri = Uri.parse(
-      'https://api.coingecko.com/api/v3/simple/price'
-      '?ids=bitcoin&vs_currencies=usd&include_24hr_change=true',
-    );
-    final res = await http.get(uri).timeout(const Duration(seconds: 10));
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final btcData = data['bitcoin'] as Map<String, dynamic>;
-      final price = (btcData['usd'] as num).toDouble();
-      final change = (btcData['usd_24h_change'] as num).toDouble();
-      final sign = change >= 0 ? '+' : '';
-      setState(() {
-        _btc = QuoteData(
-          value: 'US\$ ${_formatPrice(price)}',
-          change: '$sign${change.toStringAsFixed(1)}% hoje',
-          isPositive: change >= 0,
-        );
-      });
+  Future<bool> _fetchWeather() async {
+    try {
+      // Quirinópolis, GO
+      final uri = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast'
+        '?latitude=-18.4486&longitude=-50.4519'
+        '&current=temperature_2m,weathercode,relative_humidity_2m'
+        '&daily=temperature_2m_max,temperature_2m_min'
+        '&timezone=America%2FSao_Paulo'
+        '&forecast_days=1',
+      );
+      final res = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final current = data['current'] as Map<String, dynamic>;
+        final daily = data['daily'] as Map<String, dynamic>;
+        final code = current['weathercode'] as int;
+        if (mounted) {
+          setState(() {
+            _weather = WeatherData(
+              tempCurrent: (current['temperature_2m'] as num).toDouble(),
+              humidity: (current['relative_humidity_2m'] as num).toInt(),
+              tempMax: (daily['temperature_2m_max'] as List).first as double,
+              tempMin: (daily['temperature_2m_min'] as List).first as double,
+              description: _weatherDescription(code),
+            );
+          });
+        }
+        return true;
+      }
+    } catch (_) {
+      // Fail silently — weather card will be hidden
     }
-  }
-
-  Future<void> _fetchWeather() async {
-    // Quirinópolis, GO
-    final uri = Uri.parse(
-      'https://api.open-meteo.com/v1/forecast'
-      '?latitude=-18.4486&longitude=-50.4519'
-      '&current=temperature_2m,weathercode,relative_humidity_2m'
-      '&daily=temperature_2m_max,temperature_2m_min'
-      '&timezone=America%2FSao_Paulo'
-      '&forecast_days=1',
-    );
-    final res = await http.get(uri).timeout(const Duration(seconds: 10));
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final current = data['current'] as Map<String, dynamic>;
-      final daily = data['daily'] as Map<String, dynamic>;
-      final code = current['weathercode'] as int;
-      setState(() {
-        _weather = WeatherData(
-          tempCurrent: (current['temperature_2m'] as num).toDouble(),
-          humidity: (current['relative_humidity_2m'] as num).toInt(),
-          tempMax: (daily['temperature_2m_max'] as List).first as double,
-          tempMin: (daily['temperature_2m_min'] as List).first as double,
-          description: _weatherDescription(code),
-        );
-      });
-    }
+    return false;
   }
 
   String _formatPrice(double price) {
@@ -281,102 +312,117 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                       if (_loading) ...[
-                        const SizedBox(height: 24),
-                        const Center(child: CircularProgressIndicator()),
-                      ] else if (_error != null) ...[
-                        const SizedBox(height: 24),
-                        Center(
-                          child: Column(
+                        const SizedBox(height: 16),
+                        const LinearProgressIndicator(
+                          backgroundColor: Colors.transparent,
+                          color: Color(0xFFE8B4B8),
+                        ),
+                      ] else if (!_hasConnectivity) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
                             children: [
-                              Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: _loadData,
-                                child: const Text('Tentar novamente'),
+                              const Icon(Icons.wifi_off, color: Colors.orange, size: 16),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Sem conexão — dados podem estar desatualizados.',
+                                  style: TextStyle(color: Colors.orange, fontSize: 12),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: _loadData,
+                                child: const Icon(Icons.refresh, color: Colors.orange, size: 16),
                               ),
                             ],
                           ),
                         ),
-                      ] else ...[
-                        // ── Stats grid ───────────────────────────────────
-                        const SizedBox(height: 20),
-                        Text('Visão geral', style: titleStyle),
-                        const SizedBox(height: 12),
-                        GridView.count(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.2,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          children: [
-                            const StatCard(
-                              label: 'Saldo Total',
-                              value: 'R\$ 54.920',
-                              subtitle: 'Carteira BR + US',
-                              accentColor: Color(0xFF82B8A0),
-                            ),
-                            const StatCard(
-                              label: 'Meta Mensal',
-                              value: '78%',
-                              subtitle: 'R\$ 7.800 / R\$ 10.000',
-                              accentColor: Color(0xFFE8B4B8),
-                            ),
-                            StatCard(
-                              label: 'Dólar',
-                              value: _dollar?.value ?? '—',
-                              subtitle: _dollar?.change ?? '',
-                              accentColor: const Color(0xFFA5B4C4),
-                              subtitlePositive: _dollar?.isPositive,
-                            ),
-                            StatCard(
-                              label: 'BTC',
-                              value: _btc?.value ?? '—',
-                              subtitle: _btc?.change ?? '',
-                              accentColor: const Color(0xFFD4B482),
-                              subtitlePositive: _btc?.isPositive,
-                            ),
-                          ],
-                        ),
-
-                        // ── Weather ──────────────────────────────────────
-                        if (_weather != null) ...[
-                          const SizedBox(height: 24),
-                          Text('Clima — Quirinópolis, GO', style: titleStyle),
-                          const SizedBox(height: 12),
-                          WeatherCard(weather: _weather!),
-                        ],
-
-                        // ── News ─────────────────────────────────────────
-                        const SizedBox(height: 24),
-                        Text('Notícias', style: titleStyle),
-                        const SizedBox(height: 10),
-                        ...List.generate(_newsItems.length, (i) => Padding(
-                          padding: EdgeInsets.only(bottom: i < _newsItems.length - 1 ? 10 : 0),
-                          child: NewsCard(
-                            title: _newsItems[i].title,
-                            source: _newsItems[i].source,
-                          ),
-                        )),
-
-                        // ── Media ─────────────────────────────────────────
-                        const SizedBox(height: 24),
-                        Text('Filmes e séries', style: titleStyle),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 180,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _mediaItems.length,
-                            itemBuilder: (_, i) => MediaCard(
-                              title: _mediaItems[i].title,
-                              genre: _mediaItems[i].genre,
-                              rating: _mediaItems[i].rating,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
                       ],
+
+                      // ── Stats grid (always visible) ──────────────────
+                      const SizedBox(height: 20),
+                      Text('Visão geral', style: titleStyle),
+                      const SizedBox(height: 12),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          const StatCard(
+                            label: 'Saldo Total',
+                            value: 'R\$ 54.920',
+                            subtitle: 'Carteira BR + US',
+                            accentColor: Color(0xFF82B8A0),
+                          ),
+                          const StatCard(
+                            label: 'Meta Mensal',
+                            value: '78%',
+                            subtitle: 'R\$ 7.800 / R\$ 10.000',
+                            accentColor: Color(0xFFE8B4B8),
+                          ),
+                          StatCard(
+                            label: 'Dólar',
+                            value: _loading ? '...' : (_dollar?.value ?? '—'),
+                            subtitle: _dollar?.change ?? '',
+                            accentColor: const Color(0xFFA5B4C4),
+                            subtitlePositive: _dollar?.isPositive,
+                          ),
+                          StatCard(
+                            label: 'BTC',
+                            value: _loading ? '...' : (_btc?.value ?? '—'),
+                            subtitle: _btc?.change ?? '',
+                            accentColor: const Color(0xFFD4B482),
+                            subtitlePositive: _btc?.isPositive,
+                          ),
+                        ],
+                      ),
+
+                      // ── Weather ──────────────────────────────────────
+                      if (_weather != null) ...[
+                        const SizedBox(height: 24),
+                        Text('Clima — Quirinópolis, GO', style: titleStyle),
+                        const SizedBox(height: 12),
+                        WeatherCard(weather: _weather!),
+                      ],
+
+                      // ── News ─────────────────────────────────────────
+                      const SizedBox(height: 24),
+                      Text('Notícias', style: titleStyle),
+                      const SizedBox(height: 10),
+                      ...List.generate(_newsItems.length, (i) => Padding(
+                        padding: EdgeInsets.only(bottom: i < _newsItems.length - 1 ? 10 : 0),
+                        child: NewsCard(
+                          title: _newsItems[i].title,
+                          source: _newsItems[i].source,
+                        ),
+                      )),
+
+                      // ── Media ─────────────────────────────────────────
+                      const SizedBox(height: 24),
+                      Text('Filmes e séries', style: titleStyle),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 180,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _mediaItems.length,
+                          itemBuilder: (_, i) => MediaCard(
+                            title: _mediaItems[i].title,
+                            genre: _mediaItems[i].genre,
+                            rating: _mediaItems[i].rating,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
