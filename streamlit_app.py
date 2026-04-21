@@ -9,6 +9,7 @@ import pytz
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import hashlib
 
 # Configuração da página
 st.set_page_config(
@@ -777,6 +778,7 @@ def get_dolar_rates():
         var_bid = float(data.get("varBid", 0.0))
         if bid > 0:
             ontem = bid - var_bid if var_bid else bid
+            st.session_state["last_dolar_rates"] = (bid, ontem)
             return bid, ontem
     except:
         pass
@@ -787,11 +789,21 @@ def get_dolar_rates():
         hist = ticker.history(period="5d") # Pega 5 dias pra garantir
         close = hist['Close'].dropna()
         if len(close) >= 2:
-            return float(close.iloc[-1]), float(close.iloc[-2])
-        val = float(close.iloc[-1]) if len(close) > 0 else 6.0
-        return val, val
+            rates = (float(close.iloc[-1]), float(close.iloc[-2]))
+            st.session_state["last_dolar_rates"] = rates
+            return rates
+        if len(close) > 0:
+            val = float(close.iloc[-1])
+            rates = (val, val)
+            st.session_state["last_dolar_rates"] = rates
+            return rates
     except:
-        return 6.0, 6.0
+        pass
+
+    # Sem inventar dado: usa última cotação válida da sessão, se existir.
+    if "last_dolar_rates" in st.session_state:
+        return st.session_state["last_dolar_rates"]
+    return None, None
 
 @st.cache_data(ttl=900)
 def get_dolar():
@@ -964,18 +976,15 @@ def get_tmdb_trending():
     except:
         return None
 
-INDICACOES_FALLBACK = [
-    {"titulo": "Oppenheimer", "tipo": "Filme", "genero": "Drama/Histórico", "nota": "9.0", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/rLb2cwF3Pazuxaj0sRXQ037tGI1.jpg"},
-    {"titulo": "Chernobyl", "tipo": "Série", "genero": "Drama/Histórico", "nota": "9.4", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/900tHlUYUkp7Ol04XFSoAaEIXcT.jpg"},
-    {"titulo": "Interestelar", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.7", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/xJHokMbljvjADYdit5fK5VQsXEG.jpg"},
-    {"titulo": "Breaking Bad", "tipo": "Série", "genero": "Drama/Crime", "nota": "9.5", "onde": "Netflix", "imagem": "https://image.tmdb.org/t/p/w780/gc8PfyTqzqltKMYi6Rj87eq0FNj.jpg"},
-    {"titulo": "Duna: Parte 2", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg"},
-    {"titulo": "Severance", "tipo": "Série", "genero": "Suspense/Ficção", "nota": "8.7", "onde": "Apple TV+", "imagem": "https://image.tmdb.org/t/p/w780/lmerln1GAMwEfxhDkhYKRBOg9C6.jpg"},
-    {"titulo": "Blade Runner 2049", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.0", "onde": "Prime Video", "imagem": "https://image.tmdb.org/t/p/w780/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg"},
-    {"titulo": "The Bear", "tipo": "Série", "genero": "Drama/Comédia", "nota": "8.6", "onde": "Star+", "imagem": "https://image.tmdb.org/t/p/w780/sJd8fNieR1yiUeNbqppjUYPlr7L.jpg"},
-    {"titulo": "True Detective S1", "tipo": "Série", "genero": "Crime/Drama", "nota": "9.0", "onde": "Max", "imagem": "https://image.tmdb.org/t/p/w780/aoGVe0M6cuUevz79lhsqJZBZsrn.jpg"},
-    {"titulo": "A Origem", "tipo": "Filme", "genero": "Ficção Científica", "nota": "8.8", "onde": "HBO Max", "imagem": "https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg"},
-]
+def sample_estavel_itens(itens, quantidade, chave_dia):
+    """Amostra determinística para evitar cards mudando a cada rerun."""
+    if not itens:
+        return []
+    seed_hex = hashlib.md5(chave_dia.encode("utf-8")).hexdigest()[:8]
+    seed = int(seed_hex, 16)
+    rng = random.Random(seed)
+    qtd = min(quantidade, len(itens))
+    return rng.sample(itens, qtd)
 
 EMPRESAS_IA = [
     {"nome": "OpenAI", "query": "OpenAI ChatGPT", "emoji": "🟢"},
@@ -989,6 +998,16 @@ EMPRESAS_IA = [
 fuso_brasilia = pytz.timezone('America/Sao_Paulo')
 agora = datetime.now(fuso_brasilia)
 dia_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][agora.weekday()]
+
+with st.sidebar:
+    st.markdown("## ⚙️ Painel")
+    st.caption(f"Atualizado em {agora.strftime('%d/%m/%Y %H:%M')} (BRT)")
+    exibir_filmes_series = st.toggle("Exibir Filmes & Séries", value=True)
+    exibir_noticias_regionais = st.toggle("Exibir Notícias Regionais", value=True)
+    if st.button("🧹 Limpar cache de dados", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+    st.caption("Fontes: Yahoo Finance, AwesomeAPI, Google News RSS, Open-Meteo e TMDB.")
 
 # Header
 st.markdown("""
@@ -1046,6 +1065,11 @@ st.markdown('<div class="section-title"><span class="section-icon">💰</span> M
 
 # 1. Pega dólar Hoje e Ontem
 dolar_hj, dolar_ontem = get_dolar_rates()
+dolar_disponivel = (dolar_hj is not None) and (dolar_ontem is not None)
+if not dolar_disponivel:
+    st.warning("Não foi possível atualizar a cotação do dólar agora. Exibindo valores de carteira US em US$.")
+    dolar_hj = 0.0
+    dolar_ontem = 0.0
 
 # 2. Calcula Carteiras BR (Normal)
 var_br, patrim_br, lucro_br = calcular_carteira(CARTEIRA_BR)
@@ -1101,11 +1125,12 @@ with col_c3:
     """, unsafe_allow_html=True)
 
 with col_c4:
+    dolar_label = f"R$ {dolar_hj:.2f}" if dolar_disponivel else "N/D"
     st.markdown(f"""
     <div class="glass-card glass-gold">
         <div class="card-label">💵 Dólar</div>
-        <div class="card-value">R$ {dolar_hj:.2f}</div>
-        <div class="card-subtitle">Cotação atual</div>
+        <div class="card-value">{dolar_label}</div>
+        <div class="card-subtitle">{'Cotação atual' if dolar_disponivel else 'Cotação indisponível'}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1426,77 +1451,83 @@ for i, empresa in enumerate(EMPRESAS_IA):
 
 tmdb_data = get_tmdb_trending()
 if tmdb_data:
-    indicacoes_dia = random.sample(tmdb_data, min(4, len(tmdb_data)))
+    chave_dia = agora.strftime("%Y-%m-%d")
+    indicacoes_dia = sample_estavel_itens(tmdb_data, 4, chave_dia)
     section_subtitle = "Em alta esta semana"
 else:
-    indicacoes_dia = random.sample(INDICACOES_FALLBACK, 4)
-    section_subtitle = "Recomendações"
+    indicacoes_dia = []
+    section_subtitle = "Dados indisponíveis"
 
-st.markdown(f'<div class="section-title"><span class="section-icon">🎬</span> Filmes & Séries · <span style="font-weight: 400; font-size: 0.85rem; opacity: 0.7;">{section_subtitle}</span></div>', unsafe_allow_html=True)
+if exibir_filmes_series:
+    st.markdown(f'<div class="section-title"><span class="section-icon">🎬</span> Filmes & Séries · <span style="font-weight: 400; font-size: 0.85rem; opacity: 0.7;">{section_subtitle}</span></div>', unsafe_allow_html=True)
 
-cols_f = st.columns(4)
+    if not indicacoes_dia:
+        st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem dados do TMDB no momento</span></div>', unsafe_allow_html=True)
+    else:
+        cols_f = st.columns(4)
 
-for i, indicacao in enumerate(indicacoes_dia):
-    emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
-    img_url = indicacao.get("imagem", "")
-    
-    titulo = indicacao['titulo']
-    if len(titulo) > 25:
-        titulo = titulo[:22] + "..."
-    
-    with cols_f[i]:
-        if img_url:
-            st.markdown(f"""
-            <div class="movie-card" style="
-                background: linear-gradient(to top, 
-                    rgba(15, 15, 26, 0.95) 0%, 
-                    rgba(15, 15, 26, 0.6) 50%,
-                    rgba(15, 15, 26, 0.1) 100%), 
-                    url('{img_url}') center center / cover no-repeat;
-            ">
-                <div class="movie-card-rating">⭐ {indicacao['nota']}</div>
-                <div class="movie-card-type">{emoji} {indicacao['tipo']}</div>
-                <div class="movie-card-title">{titulo}</div>
-                <div class="movie-card-genre">{indicacao['genero']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class="glass-card glass-purple media-card" style="aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: flex-end;">
-                <div class="media-rating">⭐ {indicacao['nota']}</div>
-                <div class="card-label">{emoji} {indicacao['tipo']}</div>
-                <div class="card-value card-value-sm">{titulo}</div>
-                <div class="card-subtitle">{indicacao['genero']}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        for i, indicacao in enumerate(indicacoes_dia):
+            emoji = "🎬" if indicacao["tipo"] == "Filme" else "📺"
+            img_url = indicacao.get("imagem", "")
+            
+            titulo = indicacao['titulo']
+            if len(titulo) > 25:
+                titulo = titulo[:22] + "..."
+            
+            with cols_f[i]:
+                if img_url:
+                    st.markdown(f"""
+                    <div class="movie-card" style="
+                        background: linear-gradient(to top, 
+                            rgba(15, 15, 26, 0.95) 0%, 
+                            rgba(15, 15, 26, 0.6) 50%,
+                            rgba(15, 15, 26, 0.1) 100%), 
+                            url('{img_url}') center center / cover no-repeat;
+                    ">
+                        <div class="movie-card-rating">⭐ {indicacao['nota']}</div>
+                        <div class="movie-card-type">{emoji} {indicacao['tipo']}</div>
+                        <div class="movie-card-title">{titulo}</div>
+                        <div class="movie-card-genre">{indicacao['genero']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="glass-card glass-purple media-card" style="aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: flex-end;">
+                        <div class="media-rating">⭐ {indicacao['nota']}</div>
+                        <div class="card-label">{emoji} {indicacao['tipo']}</div>
+                        <div class="card-value card-value-sm">{titulo}</div>
+                        <div class="card-subtitle">{indicacao['genero']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # SEÇÃO: NOTÍCIAS REGIONAIS
 # ═══════════════════════════════════════════════════════════════
 
-st.markdown('<div class="section-title"><span class="section-icon">📰</span> Notícias da Região</div>', unsafe_allow_html=True)
+if exibir_noticias_regionais:
+    st.markdown('<div class="section-title"><span class="section-icon">📰</span> Notícias da Região</div>', unsafe_allow_html=True)
 
-col_n1, col_n2 = st.columns(2)
+    col_n1, col_n2 = st.columns(2)
 
-with col_n1:
-    st.markdown('<div class="card-label" style="margin-bottom: 1rem; font-size: 0.9rem;">🌴 CORURIPE & ALAGOAS</div>', unsafe_allow_html=True)
-    news_al = get_news("Coruripe Alagoas")
-    if news_al:
-        for item in news_al:
-            titulo = item.title[:80] + "..." if len(item.title) > 80 else item.title
-            st.markdown(f'<div class="news-item"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
+    with col_n1:
+        st.markdown('<div class="card-label" style="margin-bottom: 1rem; font-size: 0.9rem;">🌴 CORURIPE & ALAGOAS</div>', unsafe_allow_html=True)
+        news_al = get_news("Coruripe Alagoas")
+        if news_al:
+            for item in news_al:
+                titulo = item.title[:80] + "..." if len(item.title) > 80 else item.title
+                st.markdown(f'<div class="news-item"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
 
-with col_n2:
-    st.markdown('<div class="card-label" style="margin-bottom: 1rem; font-size: 0.9rem;">📍 QUIRINÓPOLIS & GOIÁS</div>', unsafe_allow_html=True)
-    news_go = get_news("Quirinópolis Goiás")
-    if news_go:
-        for item in news_go:
-            titulo = item.title[:80] + "..." if len(item.title) > 80 else item.title
-            st.markdown(f'<div class="news-item"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
+    with col_n2:
+        st.markdown('<div class="card-label" style="margin-bottom: 1rem; font-size: 0.9rem;">📍 QUIRINÓPOLIS & GOIÁS</div>', unsafe_allow_html=True)
+        news_go = get_news("Quirinópolis Goiás")
+        if news_go:
+            for item in news_go:
+                titulo = item.title[:80] + "..." if len(item.title) > 80 else item.title
+                st.markdown(f'<div class="news-item"><a href="{item.link}" target="_blank">{titulo}</a></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="news-item"><span style="color: rgba(255,255,255,0.5);">Sem notícias recentes</span></div>', unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
 # SEÇÃO: PREVISÃO 5 DIAS - QUIRINÓPOLIS
