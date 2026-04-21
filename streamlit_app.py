@@ -768,12 +768,26 @@ def get_stock_data(ticker):
 def get_dolar_rates():
     """Retorna (Dólar Hoje, Dólar Ontem)"""
     try:
+        # Fonte principal: AwesomeAPI (USD-BRL comercial em tempo real)
+        url = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
+        response = requests.get(url, timeout=8)
+        response.raise_for_status()
+        data = response.json().get("USDBRL", {})
+        bid = float(data.get("bid", 0.0))
+        var_bid = float(data.get("varBid", 0.0))
+        if bid > 0:
+            ontem = bid - var_bid if var_bid else bid
+            return bid, ontem
+    except:
+        pass
+
+    try:
+        # Fallback: Yahoo Finance
         ticker = yf.Ticker("USDBRL=X")
         hist = ticker.history(period="5d") # Pega 5 dias pra garantir
         close = hist['Close'].dropna()
         if len(close) >= 2:
             return float(close.iloc[-1]), float(close.iloc[-2])
-        # Fallback
         val = float(close.iloc[-1]) if len(close) > 0 else 6.0
         return val, val
     except:
